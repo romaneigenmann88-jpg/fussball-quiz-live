@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚽ Quiz-Fussball</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b132b;color:#e8eefc;min-height:100vh;display:flex;flex-direction:column}
+  .topbar{padding:10px 14px;background:#1c2541;display:flex;align-items:center;gap:8px;font-size:.85rem}
+  .dot{width:10px;height:10px;border-radius:50%;background:#e74c3c}
+  .dot.green{background:#2ecc71}
+  .screen{flex:1;display:none;flex-direction:column;justify-content:center;align-items:center;padding:24px;text-align:center;gap:16px}
+  .screen.active{display:flex}
+  h1{font-size:1.4rem;margin:0}
+  input{width:100%;max-width:340px;padding:14px;font-size:1.1rem;border-radius:12px;border:1px solid #2a3a66;background:#1c2541;color:#e8eefc;text-align:center}
+  .btn{padding:14px 22px;font-size:1.1rem;font-weight:800;border:none;border-radius:14px;background:#2ecc71;color:#06281a;cursor:pointer}
+  .btn:disabled{background:#3a4a66;color:#7a8aae}
+  .team-badge{font-size:1.6rem;font-weight:900;padding:18px 26px;border-radius:18px}
+  .reconnect{position:fixed;top:0;left:0;right:0;background:#e67e22;color:#fff;text-align:center;padding:6px;font-size:.85rem;display:none}
+  .muted{color:#9fb0d6}
+</style>
+</head>
+<body>
+<div class="reconnect" id="reconnectBanner">Verbindung verloren – versuche erneut…</div>
+<div class="topbar"><span class="dot" id="dot"></span><span id="statusText">verbinde…</span></div>
+
+<div class="screen active" id="loginScreen">
+  <h1>⚽ Quiz-Fussball</h1>
+  <p class="muted">Gib deinen Namen ein und tritt dem Spiel bei.</p>
+  <input id="nameInput" placeholder="Dein Name" maxlength="20" autocomplete="off">
+  <button class="btn" id="joinBtn">Beitreten</button>
+</div>
+
+<div class="screen" id="waitScreen">
+  <p class="muted">Du spielst für</p>
+  <div class="team-badge" id="teamBadge">…</div>
+  <p class="muted" id="waitText">Warte, bis der Host das Spiel startet…</p>
+</div>
+
+<div class="screen" id="playScreen">
+  <p class="muted">Das Spiel läuft – Fragen folgen in Schritt 2/3.</p>
+  <div class="team-badge" id="teamBadge2">…</div>
+</div>
+
+<script>
+  const PEER_CONFIG = { host:'wwm-peer-broker.onrender.com', port:443, path:'/', secure:true };
+
+  const params=new URLSearchParams(location.search);
+  const hostId=params.get('host');
+  let peer=null, conn=null, playerName='', myTeam=null, isReconnecting=false;
+
+  function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+  function setStatus(t,ok){ document.getElementById('statusText').textContent=t; document.getElementById('dot').className='dot'+(ok?' green':''); }
+  function badge(el){ el.textContent=myTeam.emoji+' '+myTeam.teamName; el.style.background=myTeam.color; el.style.color='#fff'; }
+
+  if(!hostId){ setStatus('Kein Host-Link! QR erneut scannen.',false); }
+
+  document.getElementById('joinBtn').addEventListener('click',join);
+  document.getElementById('nameInput').addEventListener('keydown',e=>{ if(e.key==='Enter')join(); });
+
+  function join(){
+    playerName=document.getElementById('nameInput').value.trim();
+    if(!playerName){ document.getElementById('nameInput').focus(); return; }
+    if(!hostId){ alert('Kein Host-Link. Bitte QR-Code erneut scannen.'); return; }
+    localStorage.setItem('fbName',playerName);
+    document.getElementById('joinBtn').disabled=true;
+    connect();
+  }
+
+  // ===== Reconnect-Backoff =====
+  let reconnectDelay=1000, reconnectTimer=null;
+  function scheduleReconnect(){
+    if(reconnectTimer||!peer||peer.destroyed)return;
+    reconnectTimer=setTimeout(()=>{
+      reconnectTimer=null;
+      if(peer&&!peer.destroyed&&peer.disconnected){ try{peer.reconnect();}catch(e){} }
+      reconnectDelay=Math.min(reconnectDelay*2,30000);
+    },reconnectDelay);
+  }
+
+  function connect(){
+    peer=new Peer({...PEER_CONFIG});
+    peer.on('open',()=>{
+      reconnectDelay=1000; if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
+      setStatus('verbinde mit Host…',false);
+      conn=peer.connect(hostId,{reliable:true});
+      conn.on('open',()=>{
+        setStatus('verbunden',true);
+        document.getElementById('reconnectBanner').style.display='none';
+        conn.send({type:'join',name:playerName});
+      });
+      conn.on('data',handleHost);
+      conn.on('close',()=>{ setStatus('Verbindung verloren',false); document.getElementById('reconnectBanner').style.display='block'; retryConn(); });
+      conn.on('error',e=>console.error('Conn:',e));
+    });
+    peer.on('disconnected',()=>{ setStatus('getrennt – reconnect…',false); scheduleReconnect(); });
+    peer.on('error',e=>{ console.error('Peer:',e); if(e.type==='peer-unavailable'){ setStatus('Host nicht gefunden',false); document.getElementById('joinBtn').disabled=false; } });
+  }
+  function retryConn(){ setTimeout(()=>{ if(!conn||!conn.open){ try{conn=peer.connect(hostId,{reliable:true}); conn.on('open',()=>{conn.send({type:'join',name:playerName}); setStatus('verbunden',true); document.getElementById('reconnectBanner').style.display='none';}); conn.on('data',handleHost); conn.on('close',()=>{document.getElementById('reconnectBanner').style.display='block';retryConn();});}catch(e){} } },3000); }
+
+  function handleHost(data){
+    switch(data.type){
+      case 'assigned':
+        myTeam=data;
+        badge(document.getElementById('teamBadge'));
+        badge(document.getElementById('teamBadge2'));
+        show(data.gameStarted?'playScreen':'waitScreen');
+        break;
+      case 'gameStart':
+        show('playScreen');
+        break;
+    }
+  }
+
+  // Name vorausfüllen
+  const saved=localStorage.getItem('fbName'); if(saved)document.getElementById('nameInput').value=saved;
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚽ Quiz-Fussball — Host</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b132b;color:#e8eefc}
+  header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#1c2541;border-bottom:1px solid #2a3a66}
+  header h1{font-size:1.2rem;margin:0}
+  .dot{width:12px;height:12px;border-radius:50%;background:#e74c3c;display:inline-block}
+  .dot.green{background:#2ecc71}
+  main{max-width:1100px;margin:0 auto;padding:20px;display:grid;grid-template-columns:320px 1fr;gap:20px}
+  .card{background:#1c2541;border:1px solid #2a3a66;border-radius:14px;padding:16px}
+  .card h2{margin:0 0 12px;font-size:1rem;color:#a9bce0}
+  .join-url{font-size:.8rem;word-break:break-all;background:#0b132b;padding:8px;border-radius:8px;cursor:pointer}
+  #qrcode{background:#fff;padding:10px;border-radius:10px;display:inline-block;margin-top:10px}
+  label{display:block;font-size:.85rem;margin:10px 0 4px;color:#a9bce0}
+  select,textarea{width:100%;background:#0b132b;color:#e8eefc;border:1px solid #2a3a66;border-radius:8px;padding:8px;font-family:inherit}
+  textarea{min-height:120px;font-size:.8rem}
+  .btn{display:inline-block;border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;font-size:.95rem}
+  .btn-primary{background:#2ecc71;color:#06281a}
+  .btn-primary:disabled{background:#3a4a66;color:#7a8aae;cursor:not-allowed}
+  .btn-ghost{background:#2a3a66;color:#e8eefc;text-decoration:none}
+  .teams{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .team{border-radius:12px;padding:12px}
+  .team.A{background:rgba(52,152,219,.15);border:1px solid #3498db}
+  .team.B{background:rgba(231,76,60,.15);border:1px solid #e74c3c}
+  .team h3{margin:0 0 8px;display:flex;justify-content:space-between;font-size:.95rem}
+  .player{padding:5px 8px;background:#0b132b;border-radius:7px;margin:4px 0;font-size:.85rem}
+  .muted{color:#7a8aae;font-size:.8rem}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pill{background:#0b132b;border:1px solid #2a3a66;border-radius:999px;padding:4px 10px;font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="statusDot"></span>
+  <h1>⚽ Quiz-Fussball — Host</h1>
+  <span class="pill" id="statusText">verbinde…</span>
+  <span style="flex:1"></span>
+  <a class="btn btn-ghost" id="displayLink" href="#" target="_blank">📺 Beamer öffnen</a>
+</header>
+
+<main>
+  <div>
+    <div class="card">
+      <h2>Beitreten</h2>
+      <div class="muted">Spieler scannen den QR (auch am Beamer sichtbar) oder öffnen den Link:</div>
+      <div class="join-url" id="joinUrl" title="Klicken zum Kopieren">URL wird erstellt…</div>
+      <div id="qrcode"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Einstellungen</h2>
+      <label>Aktive Spieler pro Frage (pro Team)</label>
+      <select id="activePerQuestion">
+        <option value="2" selected>2 (Standard)</option>
+        <option value="1">1</option>
+      </select>
+      <label>Fragen (JSON importieren)</label>
+      <textarea id="questionsInput" placeholder='[ { "frage":"…", "antworten":["A","B","C","D"], "richtig":0 } ]'></textarea>
+      <div class="muted" id="questionsStatus">Noch keine Fragen geladen.</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="row">
+        <h2 style="margin:0">Lobby</h2>
+        <span class="pill"><span id="playerCount">0</span> Spieler verbunden</span>
+        <span style="flex:1"></span>
+        <button class="btn btn-primary" id="startBtn" disabled>Spiel starten</button>
+      </div>
+      <div class="teams" style="margin-top:14px">
+        <div class="team A">
+          <h3>🔵 Team Blau <span id="countA">0</span></h3>
+          <div id="rosterA"></div>
+        </div>
+        <div class="team B">
+          <h3>🔴 Team Rot <span id="countB">0</span></h3>
+          <div id="rosterB"></div>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:12px" id="phaseInfo">Warte auf Spieler… (mind. 2 pro Team empfohlen)</div>
+    </div>
+  </div>
+</main>
+
+<script>
+  // ╔══════════════════════════════════════════════════════════════════╗
+  // ║  Verbindung läuft über einen eigenen PeerJS-Broker.               ║
+  // ║  Weitergabe: nur den host-Wert anpassen (siehe WEITERGABE.md).    ║
+  // ╚══════════════════════════════════════════════════════════════════╝
+  const PEER_CONFIG = { host:'wwm-peer-broker.onrender.com', port:443, path:'/', secure:true };
+
+  // ===== Spielzustand (Host ist die Wahrheit) =====
+  const TEAMS = {
+    A:{ key:'A', name:'Team Blau', emoji:'🔵', color:'#3498db' },
+    B:{ key:'B', name:'Team Rot',  emoji:'🔴', color:'#e74c3c' }
+  };
+  let peer=null, hostId=null;
+  let players=[];                       // {id,name,team}
+  const playerConns=new Map();          // id -> DataConnection
+  const displayConns=new Map();         // id -> DataConnection (Beamer)
+  let questions=[];
+  let gameStarted=false;
+  let ballPos=0;                        // -2..2 (0=Mitte)
+  let score={A:0,B:0};
+
+  // ===== PeerJS mit Reconnect-Backoff =====
+  let reconnectDelay=1000, reconnectTimer=null;
+  function scheduleReconnect(){
+    if(reconnectTimer||!peer||peer.destroyed)return;
+    reconnectTimer=setTimeout(()=>{
+      reconnectTimer=null;
+      if(peer&&!peer.destroyed&&peer.disconnected){ try{peer.reconnect();}catch(e){} }
+      reconnectDelay=Math.min(reconnectDelay*2,30000);
+    },reconnectDelay);
+  }
+  function setStatus(txt,ok){ document.getElementById('statusText').textContent=txt; document.getElementById('statusDot').className='dot'+(ok?' green':''); }
+
+  function initPeer(){
+    peer=new Peer({...PEER_CONFIG});
+    peer.on('open',id=>{
+      hostId=id; reconnectDelay=1000; if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
+      setStatus('bereit',true);
+      const base=location.href.substring(0,location.href.lastIndexOf('/')+1);
+      const joinUrl=base+'player.html?host='+id;
+      const dispUrl=base+'display.html?host='+id;
+      const ju=document.getElementById('joinUrl'); ju.textContent=joinUrl;
+      ju.onclick=()=>navigator.clipboard.writeText(joinUrl);
+      document.getElementById('displayLink').href=dispUrl;
+      document.getElementById('qrcode').innerHTML='';
+      new QRCode(document.getElementById('qrcode'),{text:joinUrl,width:180,height:180});
+    });
+    peer.on('connection',conn=>{
+      conn.on('open',()=>{
+        conn.on('data',d=>handleMessage(conn,d));
+        conn.on('close',()=>removeConn(conn));
+      });
+    });
+    peer.on('disconnected',()=>{ setStatus('getrennt – reconnect…',false); scheduleReconnect(); });
+    peer.on('error',e=>{ console.error('Peer:',e); setStatus('Fehler: '+e.type,false); });
+  }
+
+  // ===== Nachrichten =====
+  function handleMessage(conn,data){
+    switch(data.type){
+      case 'displayJoin':
+        displayConns.set(conn.peer,conn);
+        sendStateTo(conn);
+        break;
+      case 'join':
+        addPlayer(conn,data.name);
+        break;
+    }
+  }
+
+  function removeConn(conn){
+    if(displayConns.has(conn.peer)){ displayConns.delete(conn.peer); return; }
+    const p=players.find(x=>x.id===conn.peer);
+    if(p){ players=players.filter(x=>x!==p); playerConns.delete(conn.peer); renderLobby(); broadcastState(); }
+  }
+
+  function assignTeam(){
+    const a=players.filter(p=>p.team==='A').length, b=players.filter(p=>p.team==='B').length;
+    if(a<b)return 'A'; if(b<a)return 'B'; return Math.random()<.5?'A':'B';
+  }
+
+  function addPlayer(conn,name){
+    name=(name||'').trim()||('Spieler '+(players.length+1));
+    let p=players.find(x=>x.name.toLowerCase()===name.toLowerCase());
+    if(p){ playerConns.delete(p.id); p.id=conn.peer; }       // Reconnect: gleicher Name
+    else { p={id:conn.peer,name,team:assignTeam()}; players.push(p); }
+    playerConns.set(conn.peer,conn);
+    conn.send({type:'assigned', team:p.team, teamName:TEAMS[p.team].name, emoji:TEAMS[p.team].emoji, color:TEAMS[p.team].color, gameStarted});
+    renderLobby(); broadcastState();
+  }
+
+  // ===== Rendering Lobby =====
+  function renderLobby(){
+    const a=players.filter(p=>p.team==='A'), b=players.filter(p=>p.team==='B');
+    document.getElementById('playerCount').textContent=players.length;
+    document.getElementById('countA').textContent=a.length;
+    document.getElementById('countB').textContent=b.length;
+    document.getElementById('rosterA').innerHTML=a.map(p=>`<div class="player">${esc(p.name)}</div>`).join('')||'<div class="muted">—</div>';
+    document.getElementById('rosterB').innerHTML=b.map(p=>`<div class="player">${esc(p.name)}</div>`).join('')||'<div class="muted">—</div>';
+    document.getElementById('startBtn').disabled = gameStarted || players.length<2 || questions.length===0;
+  }
+
+  // ===== State an Beamer =====
+  function stateMsg(){
+    return { type:'state', phase: gameStarted?'play':'lobby', ballPos, score,
+      teams:{
+        A:{name:TEAMS.A.name,emoji:TEAMS.A.emoji,color:TEAMS.A.color,players:players.filter(p=>p.team==='A').map(p=>p.name)},
+        B:{name:TEAMS.B.name,emoji:TEAMS.B.emoji,color:TEAMS.B.color,players:players.filter(p=>p.team==='B').map(p=>p.name)}
+      }, joinUrl: hostId? location.href.substring(0,location.href.lastIndexOf('/')+1)+'player.html?host='+hostId : '' };
+  }
+  function sendStateTo(conn){ conn.send(stateMsg()); }
+  function broadcastState(){ const m=stateMsg(); displayConns.forEach(c=>c.send(m)); }
+
+  // ===== Fragen-Import =====
+  function loadQuestions(){
+    const raw=document.getElementById('questionsInput').value.trim();
+    const st=document.getElementById('questionsStatus');
+    if(!raw){ questions=[]; st.textContent='Noch keine Fragen geladen.'; renderLobby(); return; }
+    try{
+      let data=JSON.parse(raw.startsWith('[')?raw:('['+raw+']'));
+      if(!Array.isArray(data)||!data.length) throw new Error('leer');
+      questions=data; st.textContent='✅ '+questions.length+' Fragen geladen.'; st.style.color='#2ecc71';
+    }catch(e){ questions=[]; st.textContent='⚠️ JSON ungültig: '+e.message; st.style.color='#e74c3c'; }
+    renderLobby();
+  }
+
+  // ===== Spielstart (Schritt 1: nur Phasenwechsel; Runden-Logik folgt) =====
+  function startGame(){
+    if(players.length<2||!questions.length)return;
+    gameStarted=true;
+    document.getElementById('phaseInfo').textContent='Spiel läuft… (Runden-Logik kommt in Schritt 3)';
+    document.getElementById('startBtn').disabled=true;
+    playerConns.forEach(c=>c.send({type:'gameStart'}));
+    broadcastState();
+  }
+
+  function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+
+  document.getElementById('questionsInput').addEventListener('input',loadQuestions);
+  document.getElementById('startBtn').addEventListener('click',startGame);
+  window.onload=initPeer;
+</script>
+</body>
+</html>
