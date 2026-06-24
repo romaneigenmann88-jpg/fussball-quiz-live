@@ -20,10 +20,11 @@
   #qrcode{background:#fff;padding:10px;border-radius:10px;display:inline-block;margin-top:10px}
   label{display:block;font-size:.85rem;margin:10px 0 4px;color:#a9bce0}
   select,textarea{width:100%;background:#0b132b;color:#e8eefc;border:1px solid #2a3a66;border-radius:8px;padding:8px;font-family:inherit}
-  textarea{min-height:120px;font-size:.8rem}
-  .btn{display:inline-block;border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;font-size:.95rem}
+  textarea{min-height:110px;font-size:.8rem}
+  .btn{border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;font-size:.95rem}
   .btn-primary{background:#2ecc71;color:#06281a}
   .btn-primary:disabled{background:#3a4a66;color:#7a8aae;cursor:not-allowed}
+  .btn-danger{background:#e74c3c;color:#fff}
   .btn-ghost{background:#2a3a66;color:#e8eefc;text-decoration:none}
   .teams{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .team{border-radius:12px;padding:12px}
@@ -31,9 +32,12 @@
   .team.B{background:rgba(231,76,60,.15);border:1px solid #e74c3c}
   .team h3{margin:0 0 8px;display:flex;justify-content:space-between;font-size:.95rem}
   .player{padding:5px 8px;background:#0b132b;border-radius:7px;margin:4px 0;font-size:.85rem}
+  .player.active{outline:2px solid #f1c40f}
   .muted{color:#7a8aae;font-size:.8rem}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .pill{background:#0b132b;border:1px solid #2a3a66;border-radius:999px;padding:4px 10px;font-size:.8rem}
+  .scoreboard{font-size:1.4rem;font-weight:900;text-align:center;margin:6px 0}
+  .qbox{background:#0b132b;border-radius:10px;padding:10px;margin-top:10px;font-size:.9rem}
 </style>
 </head>
 <body>
@@ -49,11 +53,10 @@
   <div>
     <div class="card">
       <h2>Beitreten</h2>
-      <div class="muted">Spieler scannen den QR (auch am Beamer sichtbar) oder öffnen den Link:</div>
+      <div class="muted">QR scannen (auch am Beamer) oder Link öffnen:</div>
       <div class="join-url" id="joinUrl" title="Klicken zum Kopieren">URL wird erstellt…</div>
       <div id="qrcode"></div>
     </div>
-
     <div class="card" style="margin-top:16px">
       <h2>Einstellungen</h2>
       <label>Aktive Spieler pro Frage (pro Team)</label>
@@ -62,7 +65,7 @@
         <option value="1">1</option>
       </select>
       <label>Fragen (JSON importieren)</label>
-      <textarea id="questionsInput" placeholder='[ { "frage":"…", "antworten":["A","B","C","D"], "richtig":0 } ]'></textarea>
+      <textarea id="questionsInput" placeholder='[ {"frage":"…","antworten":["A","B","C","D"],"richtig":0} ]'></textarea>
       <div class="muted" id="questionsStatus">Noch keine Fragen geladen.</div>
     </div>
   </div>
@@ -70,166 +73,218 @@
   <div>
     <div class="card">
       <div class="row">
-        <h2 style="margin:0">Lobby</h2>
-        <span class="pill"><span id="playerCount">0</span> Spieler verbunden</span>
+        <h2 style="margin:0">Spielleitung</h2>
+        <span class="pill"><span id="playerCount">0</span> Spieler</span>
         <span style="flex:1"></span>
         <button class="btn btn-primary" id="startBtn" disabled>Spiel starten</button>
+        <button class="btn btn-danger" id="stopBtn" style="display:none">Schlusspfiff</button>
+        <button class="btn btn-ghost" id="newBtn" style="display:none">Neues Match</button>
       </div>
+      <div class="scoreboard" id="scoreboard" style="display:none">🔵 <span id="scoreA">0</span> : <span id="scoreB">0</span> 🔴</div>
       <div class="teams" style="margin-top:14px">
-        <div class="team A">
-          <h3>🔵 Team Blau <span id="countA">0</span></h3>
-          <div id="rosterA"></div>
-        </div>
-        <div class="team B">
-          <h3>🔴 Team Rot <span id="countB">0</span></h3>
-          <div id="rosterB"></div>
-        </div>
+        <div class="team A"><h3>🔵 Team Blau <span id="countA">0</span></h3><div id="rosterA"></div></div>
+        <div class="team B"><h3>🔴 Team Rot <span id="countB">0</span></h3><div id="rosterB"></div></div>
       </div>
-      <div class="muted" style="margin-top:12px" id="phaseInfo">Warte auf Spieler… (mind. 2 pro Team empfohlen)</div>
+      <div class="qbox" id="qbox" style="display:none"></div>
+      <div class="muted" style="margin-top:12px" id="phaseInfo">Warte auf Spieler…</div>
     </div>
   </div>
 </main>
 
 <script>
-  // ╔══════════════════════════════════════════════════════════════════╗
-  // ║  Verbindung läuft über einen eigenen PeerJS-Broker.               ║
-  // ║  Weitergabe: nur den host-Wert anpassen (siehe WEITERGABE.md).    ║
-  // ╚══════════════════════════════════════════════════════════════════╝
-  const PEER_CONFIG = { host:'wwm-peer-broker.onrender.com', port:443, path:'/', secure:true };
+  const PEER_CONFIG   = { host:'wwm-peer-broker.onrender.com', port:443, path:'/', secure:true };
+  const METERED_CONFIG= { username:'c4ca643ec3ef89475fda8aaf', credential:'958T4scRQJRKgSyg' };
+  function buildIce(){const u=METERED_CONFIG.username,c=METERED_CONFIG.credential;return [{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.relay.metered.ca:80'},{urls:'turn:global.relay.metered.ca:80',username:u,credential:c},{urls:'turn:global.relay.metered.ca:80?transport=tcp',username:u,credential:c},{urls:'turn:global.relay.metered.ca:443',username:u,credential:c},{urls:'turns:global.relay.metered.ca:443?transport=tcp',username:u,credential:c}];}
 
-  // ===== Spielzustand (Host ist die Wahrheit) =====
-  const TEAMS = {
-    A:{ key:'A', name:'Team Blau', emoji:'🔵', color:'#3498db' },
-    B:{ key:'B', name:'Team Rot',  emoji:'🔴', color:'#e74c3c' }
-  };
-  let peer=null, hostId=null;
-  let players=[];                       // {id,name,team}
-  const playerConns=new Map();          // id -> DataConnection
-  const displayConns=new Map();         // id -> DataConnection (Beamer)
+  const TEAMS={A:{key:'A',name:'Team Blau',emoji:'🔵',color:'#3498db'},B:{key:'B',name:'Team Rot',emoji:'🔴',color:'#e74c3c'}};
+  let peer=null,hostId=null;
+  let players=[];                 // {id,name,team}
+  const playerConns=new Map();
+  const displayConns=new Map();
   let questions=[];
   let gameStarted=false;
-  let ballPos=0;                        // -2..2 (0=Mitte)
-  let score={A:0,B:0};
+  let ballPos=0, score={A:0,B:0};
+  let settings={active:2};
+  let rotation={A:0,B:0};
+  let round=null;
+  const ROUND_DELAY=3800;
 
-  // ===== PeerJS mit Reconnect-Backoff =====
-  let reconnectDelay=1000, reconnectTimer=null;
-  function scheduleReconnect(){
-    if(reconnectTimer||!peer||peer.destroyed)return;
-    reconnectTimer=setTimeout(()=>{
-      reconnectTimer=null;
-      if(peer&&!peer.destroyed&&peer.disconnected){ try{peer.reconnect();}catch(e){} }
-      reconnectDelay=Math.min(reconnectDelay*2,30000);
-    },reconnectDelay);
-  }
-  function setStatus(txt,ok){ document.getElementById('statusText').textContent=txt; document.getElementById('statusDot').className='dot'+(ok?' green':''); }
+  // ===== Peer + Backoff =====
+  let rDelay=1000,rTimer=null;
+  function scheduleReconnect(){if(rTimer||!peer||peer.destroyed)return;rTimer=setTimeout(()=>{rTimer=null;if(peer&&!peer.destroyed&&peer.disconnected){try{peer.reconnect();}catch(e){}}rDelay=Math.min(rDelay*2,30000);},rDelay);}
+  function setStatus(t,ok){document.getElementById('statusText').textContent=t;document.getElementById('statusDot').className='dot'+(ok?' green':'');}
 
   function initPeer(){
-    peer=new Peer({...PEER_CONFIG});
+    peer=new Peer({...PEER_CONFIG, config:{iceServers:buildIce()}});
     peer.on('open',id=>{
-      hostId=id; reconnectDelay=1000; if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
+      hostId=id;rDelay=1000;if(rTimer){clearTimeout(rTimer);rTimer=null;}
       setStatus('bereit',true);
       const base=location.href.substring(0,location.href.lastIndexOf('/')+1);
       const joinUrl=base+'player.html?host='+id;
-      const dispUrl=base+'display.html?host='+id;
-      const ju=document.getElementById('joinUrl'); ju.textContent=joinUrl;
-      ju.onclick=()=>navigator.clipboard.writeText(joinUrl);
-      document.getElementById('displayLink').href=dispUrl;
+      document.getElementById('joinUrl').textContent=joinUrl;
+      document.getElementById('joinUrl').onclick=()=>navigator.clipboard.writeText(joinUrl);
+      document.getElementById('displayLink').href=base+'display.html?host='+id;
       document.getElementById('qrcode').innerHTML='';
       new QRCode(document.getElementById('qrcode'),{text:joinUrl,width:180,height:180});
     });
-    peer.on('connection',conn=>{
-      conn.on('open',()=>{
-        conn.on('data',d=>handleMessage(conn,d));
-        conn.on('close',()=>removeConn(conn));
-      });
-    });
-    peer.on('disconnected',()=>{ setStatus('getrennt – reconnect…',false); scheduleReconnect(); });
-    peer.on('error',e=>{ console.error('Peer:',e); setStatus('Fehler: '+e.type,false); });
+    peer.on('connection',conn=>{conn.on('open',()=>{conn.on('data',d=>handleMessage(conn,d));conn.on('close',()=>removeConn(conn));});});
+    peer.on('disconnected',()=>{setStatus('getrennt – reconnect…',false);scheduleReconnect();});
+    peer.on('error',e=>{console.error('Peer:',e);setStatus('Fehler: '+e.type,false);});
   }
 
-  // ===== Nachrichten =====
   function handleMessage(conn,data){
-    switch(data.type){
-      case 'displayJoin':
-        displayConns.set(conn.peer,conn);
-        sendStateTo(conn);
-        break;
-      case 'join':
-        addPlayer(conn,data.name);
-        break;
-    }
+    if(data.type==='displayJoin'){displayConns.set(conn.peer,conn);conn.send(stateMsg());return;}
+    if(data.type==='join'){addPlayer(conn,data.name);return;}
+    if(data.type==='answer'){handleAnswer(conn,data);return;}
   }
-
   function removeConn(conn){
-    if(displayConns.has(conn.peer)){ displayConns.delete(conn.peer); return; }
+    if(displayConns.has(conn.peer)){displayConns.delete(conn.peer);return;}
     const p=players.find(x=>x.id===conn.peer);
-    if(p){ players=players.filter(x=>x!==p); playerConns.delete(conn.peer); renderLobby(); broadcastState(); }
+    if(p){players=players.filter(x=>x!==p);playerConns.delete(conn.peer);renderLobby();broadcastState();}
   }
-
-  function assignTeam(){
-    const a=players.filter(p=>p.team==='A').length, b=players.filter(p=>p.team==='B').length;
-    if(a<b)return 'A'; if(b<a)return 'B'; return Math.random()<.5?'A':'B';
-  }
-
+  function assignTeam(){const a=players.filter(p=>p.team==='A').length,b=players.filter(p=>p.team==='B').length;if(a<b)return'A';if(b<a)return'B';return Math.random()<.5?'A':'B';}
   function addPlayer(conn,name){
     name=(name||'').trim()||('Spieler '+(players.length+1));
     let p=players.find(x=>x.name.toLowerCase()===name.toLowerCase());
-    if(p){ playerConns.delete(p.id); p.id=conn.peer; }       // Reconnect: gleicher Name
-    else { p={id:conn.peer,name,team:assignTeam()}; players.push(p); }
+    if(p){playerConns.delete(p.id);p.id=conn.peer;} else {p={id:conn.peer,name,team:assignTeam()};players.push(p);}
     playerConns.set(conn.peer,conn);
-    conn.send({type:'assigned', team:p.team, teamName:TEAMS[p.team].name, emoji:TEAMS[p.team].emoji, color:TEAMS[p.team].color, gameStarted});
-    renderLobby(); broadcastState();
+    conn.send({type:'assigned',team:p.team,teamName:TEAMS[p.team].name,emoji:TEAMS[p.team].emoji,color:TEAMS[p.team].color,gameStarted});
+    if(gameStarted&&round){ // spät beigetreten -> zuschauen
+      conn.send({type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'spectate'});
+    }
+    renderLobby();broadcastState();
+  }
+  function sendTo(pid,msg){const c=playerConns.get(pid);if(c)c.send(msg);}
+
+  // ===== Rundenlogik =====
+  function rosterOf(team){return players.filter(p=>p.team===team);}
+  function pickActive(team){
+    const roster=rosterOf(team);const n=Math.min(settings.active,roster.length);
+    const active=new Set(),used=new Set();let ptr=rotation[team];
+    for(let i=0;i<n;i++){const p=roster[(ptr+i)%roster.length];active.add(p.id);used.add(p.id);}
+    rotation[team]=roster.length?((ptr+n)%roster.length):0;
+    return {active,used,roster,required:Math.max(1,n),correct:0,answered:new Set()};
+  }
+  function startRound(qIndex){
+    if(!gameStarted||!questions.length)return;
+    qIndex=((qIndex%questions.length)+questions.length)%questions.length;
+    round={qIndex,question:questions[qIndex],ended:false,teams:{A:pickActive('A'),B:pickActive('B')}};
+    players.forEach(p=>{const role=round.teams[p.team].active.has(p.id)?'active':'spectate';
+      sendTo(p.id,{type:'question',qIndex,frage:round.question.frage,antworten:round.question.antworten,role});});
+    renderLobby();broadcastState();
+  }
+  function handleAnswer(conn,data){
+    if(!round||round.ended)return;
+    const p=players.find(x=>x.id===conn.peer);if(!p)return;
+    const T=round.teams[p.team];if(!T||!T.active.has(p.id)||T.answered.has(p.id))return;
+    if(data.qIndex!==round.qIndex)return;
+    T.answered.add(p.id);
+    const correct=(data.choice===round.question.richtig);
+    sendTo(p.id,{type:'answerAck',correct});
+    if(correct){
+      T.correct++;
+      if(T.correct>=T.required){endRound(p.team);return;}
+    }else{
+      const sub=T.roster.find(rp=>!T.used.has(rp.id));
+      if(sub){T.active.delete(p.id);T.active.add(sub.id);T.used.add(sub.id);
+        sendTo(sub.id,{type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'active'});}
+      else{T.answered.delete(p.id);sendTo(p.id,{type:'retry'});} // kein Ersatz -> nochmal
+    }
+    renderLobby();broadcastState();
+  }
+  function endRound(winner){
+    round.ended=true;let goalBy=null;
+    if(winner==='A')ballPos++;else ballPos--;
+    if(ballPos>=2){score.A++;ballPos=0;goalBy='A';}
+    else if(ballPos<=-2){score.B++;ballPos=0;goalBy='B';}
+    players.forEach(p=>sendTo(p.id,{type:'roundResult',winner,correctIndex:round.question.richtig,frage:round.question.frage,antworten:round.question.antworten}));
+    broadcastState(goalBy);
+    renderLobby();
+    const next=round.qIndex+1;
+    setTimeout(()=>{if(gameStarted)startRound(next);},ROUND_DELAY);
   }
 
-  // ===== Rendering Lobby =====
+  // ===== Steuerung =====
+  function startGame(){
+    if(players.length<2||!questions.length)return;
+    if(rosterOf('A').length<1||rosterOf('B').length<1){alert('Beide Teams brauchen mindestens 1 Spieler.');return;}
+    settings.active=parseInt(document.getElementById('activePerQuestion').value);
+    gameStarted=true;rotation={A:0,B:0};score={A:0,B:0};ballPos=0;
+    document.getElementById('startBtn').style.display='none';
+    document.getElementById('stopBtn').style.display='inline-block';
+    document.getElementById('scoreboard').style.display='block';
+    document.getElementById('qbox').style.display='block';
+    document.getElementById('activePerQuestion').disabled=true;
+    startRound(0);
+  }
+  function endMatch(){
+    gameStarted=false;round=null;
+    const winner=score.A===score.B?null:(score.A>score.B?'A':'B');
+    playerConns.forEach(c=>c.send({type:'matchEnd',score,winner}));
+    const st=stateMsg();st.phase='end';st.matchWinner=winner;displayConns.forEach(c=>c.send(st));
+    document.getElementById('stopBtn').style.display='none';
+    document.getElementById('newBtn').style.display='inline-block';
+    document.getElementById('phaseInfo').textContent = winner? ('Schlusspfiff! Sieger: '+TEAMS[winner].name) : 'Schlusspfiff! Unentschieden.';
+    document.getElementById('qbox').style.display='none';
+  }
+  function newMatch(){
+    score={A:0,B:0};ballPos=0;round=null;
+    document.getElementById('newBtn').style.display='none';
+    document.getElementById('startBtn').style.display='inline-block';
+    document.getElementById('scoreboard').style.display='none';
+    document.getElementById('activePerQuestion').disabled=false;
+    playerConns.forEach(c=>c.send({type:'backToLobby'}));
+    renderLobby();broadcastState();
+  }
+
+  // ===== Rendering =====
   function renderLobby(){
-    const a=players.filter(p=>p.team==='A'), b=players.filter(p=>p.team==='B');
+    const a=rosterOf('A'),b=rosterOf('B');
     document.getElementById('playerCount').textContent=players.length;
     document.getElementById('countA').textContent=a.length;
     document.getElementById('countB').textContent=b.length;
-    document.getElementById('rosterA').innerHTML=a.map(p=>`<div class="player">${esc(p.name)}</div>`).join('')||'<div class="muted">—</div>';
-    document.getElementById('rosterB').innerHTML=b.map(p=>`<div class="player">${esc(p.name)}</div>`).join('')||'<div class="muted">—</div>';
-    document.getElementById('startBtn').disabled = gameStarted || players.length<2 || questions.length===0;
+    const act=t=>(round&&!round.ended)?round.teams[t].active:new Set();
+    const aA=act('A'),aB=act('B');
+    document.getElementById('rosterA').innerHTML=a.map(p=>`<div class="player ${aA.has(p.id)?'active':''}">${esc(p.name)}</div>`).join('')||'<div class="muted">—</div>';
+    document.getElementById('rosterB').innerHTML=b.map(p=>`<div class="player ${aB.has(p.id)?'active':''}">${esc(p.name)}</div>`).join('')||'<div class="muted">—</div>';
+    document.getElementById('scoreA').textContent=score.A;
+    document.getElementById('scoreB').textContent=score.B;
+    document.getElementById('startBtn').disabled=gameStarted||players.length<2||questions.length===0;
+    if(gameStarted&&round){
+      const q=round.question;
+      document.getElementById('qbox').innerHTML='<b>Frage '+(round.qIndex+1)+':</b> '+esc(q.frage)+(round.ended?'<br><span class="muted">Runde vorbei – nächste Frage folgt…</span>':'');
+      document.getElementById('phaseInfo').textContent='Ballposition: '+ballPos+'  ·  Spiel läuft…';
+    }
   }
-
-  // ===== State an Beamer =====
-  function stateMsg(){
-    return { type:'state', phase: gameStarted?'play':'lobby', ballPos, score,
-      teams:{
-        A:{name:TEAMS.A.name,emoji:TEAMS.A.emoji,color:TEAMS.A.color,players:players.filter(p=>p.team==='A').map(p=>p.name)},
-        B:{name:TEAMS.B.name,emoji:TEAMS.B.emoji,color:TEAMS.B.color,players:players.filter(p=>p.team==='B').map(p=>p.name)}
-      }, joinUrl: hostId? location.href.substring(0,location.href.lastIndexOf('/')+1)+'player.html?host='+hostId : '' };
+  function stateMsg(goalBy){
+    let cq=null;
+    if(round&&gameStarted)cq={frage:round.question.frage,antworten:round.question.antworten,richtig:round.ended?round.question.richtig:null,qIndex:round.qIndex};
+    return {type:'state',phase:!gameStarted?'lobby':(round&&round.ended?'roundresult':'play'),
+      ballPos,score,goalBy:goalBy||null,currentQuestion:cq,matchWinner:null,
+      teams:{A:{name:TEAMS.A.name,emoji:TEAMS.A.emoji,color:TEAMS.A.color,players:rosterOf('A').map(p=>p.name)},
+             B:{name:TEAMS.B.name,emoji:TEAMS.B.emoji,color:TEAMS.B.color,players:rosterOf('B').map(p=>p.name)}},
+      joinUrl:hostId?location.href.substring(0,location.href.lastIndexOf('/')+1)+'player.html?host='+hostId:''};
   }
-  function sendStateTo(conn){ conn.send(stateMsg()); }
-  function broadcastState(){ const m=stateMsg(); displayConns.forEach(c=>c.send(m)); }
+  function broadcastState(goalBy){const m=stateMsg(goalBy);displayConns.forEach(c=>c.send(m));}
 
   // ===== Fragen-Import =====
   function loadQuestions(){
-    const raw=document.getElementById('questionsInput').value.trim();
-    const st=document.getElementById('questionsStatus');
-    if(!raw){ questions=[]; st.textContent='Noch keine Fragen geladen.'; renderLobby(); return; }
+    const raw=document.getElementById('questionsInput').value.trim();const st=document.getElementById('questionsStatus');
+    if(!raw){questions=[];st.textContent='Noch keine Fragen geladen.';renderLobby();return;}
     try{
       let data=JSON.parse(raw.startsWith('[')?raw:('['+raw+']'));
-      if(!Array.isArray(data)||!data.length) throw new Error('leer');
-      questions=data; st.textContent='✅ '+questions.length+' Fragen geladen.'; st.style.color='#2ecc71';
-    }catch(e){ questions=[]; st.textContent='⚠️ JSON ungültig: '+e.message; st.style.color='#e74c3c'; }
+      data=data.filter(q=>q&&typeof q.frage==='string'&&Array.isArray(q.antworten)&&q.antworten.length>=2&&Number.isInteger(q.richtig)&&q.richtig>=0&&q.richtig<q.antworten.length);
+      if(!data.length)throw new Error('keine gültigen Fragen');
+      questions=data;st.textContent='✅ '+questions.length+' Fragen geladen.';st.style.color='#2ecc71';
+    }catch(e){questions=[];st.textContent='⚠️ JSON ungültig: '+e.message;st.style.color='#e74c3c';}
     renderLobby();
   }
-
-  // ===== Spielstart (Schritt 1: nur Phasenwechsel; Runden-Logik folgt) =====
-  function startGame(){
-    if(players.length<2||!questions.length)return;
-    gameStarted=true;
-    document.getElementById('phaseInfo').textContent='Spiel läuft… (Runden-Logik kommt in Schritt 3)';
-    document.getElementById('startBtn').disabled=true;
-    playerConns.forEach(c=>c.send({type:'gameStart'}));
-    broadcastState();
-  }
-
   function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
 
   document.getElementById('questionsInput').addEventListener('input',loadQuestions);
   document.getElementById('startBtn').addEventListener('click',startGame);
+  document.getElementById('stopBtn').addEventListener('click',endMatch);
+  document.getElementById('newBtn').addEventListener('click',newMatch);
   window.onload=initPeer;
 </script>
 </body>

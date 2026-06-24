@@ -11,24 +11,36 @@
   .topbar{padding:10px 14px;background:#1c2541;display:flex;align-items:center;gap:8px;font-size:.85rem}
   .dot{width:10px;height:10px;border-radius:50%;background:#e74c3c}
   .dot.green{background:#2ecc71}
-  .screen{flex:1;display:none;flex-direction:column;justify-content:center;align-items:center;padding:24px;text-align:center;gap:16px}
+  .spacer{flex:1}
+  .myteam{font-weight:800;padding:3px 10px;border-radius:999px;font-size:.8rem}
+  .screen{flex:1;display:none;flex-direction:column;justify-content:center;align-items:center;padding:22px;text-align:center;gap:16px}
   .screen.active{display:flex}
   h1{font-size:1.4rem;margin:0}
   input{width:100%;max-width:340px;padding:14px;font-size:1.1rem;border-radius:12px;border:1px solid #2a3a66;background:#1c2541;color:#e8eefc;text-align:center}
   .btn{padding:14px 22px;font-size:1.1rem;font-weight:800;border:none;border-radius:14px;background:#2ecc71;color:#06281a;cursor:pointer}
   .btn:disabled{background:#3a4a66;color:#7a8aae}
-  .team-badge{font-size:1.6rem;font-weight:900;padding:18px 26px;border-radius:18px}
+  .team-badge{font-size:1.5rem;font-weight:900;padding:16px 24px;border-radius:18px}
+  .question{font-size:1.3rem;font-weight:700;max-width:520px}
+  .options{display:grid;gap:12px;width:100%;max-width:460px}
+  .opt{padding:16px;font-size:1.15rem;font-weight:700;border:2px solid #2a3a66;border-radius:14px;background:#1c2541;color:#e8eefc;cursor:pointer;text-align:left}
+  .opt:disabled{opacity:.6}
+  .opt.correct{background:#1e7a3a;border-color:#2ecc71}
+  .opt.wrong{background:#7a1e1e;border-color:#e74c3c}
+  .opt.chosen{outline:3px solid #f1c40f}
+  .spectate .opt{cursor:default;opacity:.75}
+  .banner{font-size:1.2rem;font-weight:800}
   .reconnect{position:fixed;top:0;left:0;right:0;background:#e67e22;color:#fff;text-align:center;padding:6px;font-size:.85rem;display:none}
   .muted{color:#9fb0d6}
+  .big{font-size:2rem;font-weight:900}
 </style>
 </head>
 <body>
 <div class="reconnect" id="reconnectBanner">Verbindung verloren – versuche erneut…</div>
-<div class="topbar"><span class="dot" id="dot"></span><span id="statusText">verbinde…</span></div>
+<div class="topbar"><span class="dot" id="dot"></span><span id="statusText">verbinde…</span><span class="spacer"></span><span class="myteam" id="myTeamTag" style="display:none"></span></div>
 
 <div class="screen active" id="loginScreen">
   <h1>⚽ Quiz-Fussball</h1>
-  <p class="muted">Gib deinen Namen ein und tritt dem Spiel bei.</p>
+  <p class="muted">Name eingeben und beitreten.</p>
   <input id="nameInput" placeholder="Dein Name" maxlength="20" autocomplete="off">
   <button class="btn" id="joinBtn">Beitreten</button>
 </div>
@@ -36,86 +48,127 @@
 <div class="screen" id="waitScreen">
   <p class="muted">Du spielst für</p>
   <div class="team-badge" id="teamBadge">…</div>
-  <p class="muted" id="waitText">Warte, bis der Host das Spiel startet…</p>
+  <p class="muted" id="waitText">Warte, bis der Host startet…</p>
 </div>
 
 <div class="screen" id="playScreen">
-  <p class="muted">Das Spiel läuft – Fragen folgen in Schritt 2/3.</p>
-  <div class="team-badge" id="teamBadge2">…</div>
+  <div class="banner" id="roleBanner"></div>
+  <div class="question" id="questionText"></div>
+  <div class="options" id="options"></div>
+  <div class="muted" id="feedback"></div>
+</div>
+
+<div class="screen" id="endScreen">
+  <div class="big" id="endTitle">Schlusspfiff!</div>
+  <div class="team-badge" id="endScore">0 : 0</div>
+  <div id="endText" class="muted"></div>
 </div>
 
 <script>
-  const PEER_CONFIG = { host:'wwm-peer-broker.onrender.com', port:443, path:'/', secure:true };
+  const PEER_CONFIG   = { host:'wwm-peer-broker.onrender.com', port:443, path:'/', secure:true };
+  const METERED_CONFIG= { username:'c4ca643ec3ef89475fda8aaf', credential:'958T4scRQJRKgSyg' };
+  function buildIce(){const u=METERED_CONFIG.username,c=METERED_CONFIG.credential;return [{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.relay.metered.ca:80'},{urls:'turn:global.relay.metered.ca:80',username:u,credential:c},{urls:'turn:global.relay.metered.ca:80?transport=tcp',username:u,credential:c},{urls:'turn:global.relay.metered.ca:443',username:u,credential:c},{urls:'turns:global.relay.metered.ca:443?transport=tcp',username:u,credential:c}];}
 
   const params=new URLSearchParams(location.search);
   const hostId=params.get('host');
-  let peer=null, conn=null, playerName='', myTeam=null, isReconnecting=false;
+  let peer=null,conn=null,playerName='',myTeam=null;
+  let curQ=null,qShownAt=0,myRole='spectate',answered=false;
 
-  function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-  function setStatus(t,ok){ document.getElementById('statusText').textContent=t; document.getElementById('dot').className='dot'+(ok?' green':''); }
-  function badge(el){ el.textContent=myTeam.emoji+' '+myTeam.teamName; el.style.background=myTeam.color; el.style.color='#fff'; }
+  function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+  function setStatus(t,ok){document.getElementById('statusText').textContent=t;document.getElementById('dot').className='dot'+(ok?' green':'');}
+  function badge(el){el.textContent=myTeam.emoji+' '+myTeam.teamName;el.style.background=myTeam.color;el.style.color='#fff';}
 
-  if(!hostId){ setStatus('Kein Host-Link! QR erneut scannen.',false); }
-
+  if(!hostId)setStatus('Kein Host-Link! QR erneut scannen.',false);
   document.getElementById('joinBtn').addEventListener('click',join);
-  document.getElementById('nameInput').addEventListener('keydown',e=>{ if(e.key==='Enter')join(); });
+  document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')join();});
+  const saved=localStorage.getItem('fbName');if(saved)document.getElementById('nameInput').value=saved;
 
   function join(){
     playerName=document.getElementById('nameInput').value.trim();
-    if(!playerName){ document.getElementById('nameInput').focus(); return; }
-    if(!hostId){ alert('Kein Host-Link. Bitte QR-Code erneut scannen.'); return; }
+    if(!playerName){document.getElementById('nameInput').focus();return;}
+    if(!hostId){alert('Kein Host-Link. QR erneut scannen.');return;}
     localStorage.setItem('fbName',playerName);
-    document.getElementById('joinBtn').disabled=true;
-    connect();
+    document.getElementById('joinBtn').disabled=true;connect();
   }
 
-  // ===== Reconnect-Backoff =====
-  let reconnectDelay=1000, reconnectTimer=null;
-  function scheduleReconnect(){
-    if(reconnectTimer||!peer||peer.destroyed)return;
-    reconnectTimer=setTimeout(()=>{
-      reconnectTimer=null;
-      if(peer&&!peer.destroyed&&peer.disconnected){ try{peer.reconnect();}catch(e){} }
-      reconnectDelay=Math.min(reconnectDelay*2,30000);
-    },reconnectDelay);
-  }
+  let rDelay=1000,rTimer=null;
+  function scheduleReconnect(){if(rTimer||!peer||peer.destroyed)return;rTimer=setTimeout(()=>{rTimer=null;if(peer&&!peer.destroyed&&peer.disconnected){try{peer.reconnect();}catch(e){}}rDelay=Math.min(rDelay*2,30000);},rDelay);}
 
   function connect(){
-    peer=new Peer({...PEER_CONFIG});
+    peer=new Peer({...PEER_CONFIG, config:{iceServers:buildIce()}});
     peer.on('open',()=>{
-      reconnectDelay=1000; if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
+      rDelay=1000;if(rTimer){clearTimeout(rTimer);rTimer=null;}
       setStatus('verbinde mit Host…',false);
       conn=peer.connect(hostId,{reliable:true});
-      conn.on('open',()=>{
-        setStatus('verbunden',true);
-        document.getElementById('reconnectBanner').style.display='none';
-        conn.send({type:'join',name:playerName});
-      });
+      conn.on('open',()=>{setStatus('verbunden',true);document.getElementById('reconnectBanner').style.display='none';conn.send({type:'join',name:playerName});});
       conn.on('data',handleHost);
-      conn.on('close',()=>{ setStatus('Verbindung verloren',false); document.getElementById('reconnectBanner').style.display='block'; retryConn(); });
+      conn.on('close',()=>{setStatus('Verbindung verloren',false);document.getElementById('reconnectBanner').style.display='block';retryConn();});
       conn.on('error',e=>console.error('Conn:',e));
     });
-    peer.on('disconnected',()=>{ setStatus('getrennt – reconnect…',false); scheduleReconnect(); });
-    peer.on('error',e=>{ console.error('Peer:',e); if(e.type==='peer-unavailable'){ setStatus('Host nicht gefunden',false); document.getElementById('joinBtn').disabled=false; } });
+    peer.on('disconnected',()=>{setStatus('getrennt – reconnect…',false);scheduleReconnect();});
+    peer.on('error',e=>{console.error('Peer:',e);if(e.type==='peer-unavailable'){setStatus('Host nicht gefunden',false);document.getElementById('joinBtn').disabled=false;}});
   }
-  function retryConn(){ setTimeout(()=>{ if(!conn||!conn.open){ try{conn=peer.connect(hostId,{reliable:true}); conn.on('open',()=>{conn.send({type:'join',name:playerName}); setStatus('verbunden',true); document.getElementById('reconnectBanner').style.display='none';}); conn.on('data',handleHost); conn.on('close',()=>{document.getElementById('reconnectBanner').style.display='block';retryConn();});}catch(e){} } },3000); }
+  function retryConn(){setTimeout(()=>{if(!conn||!conn.open){try{conn=peer.connect(hostId,{reliable:true});conn.on('open',()=>{conn.send({type:'join',name:playerName});setStatus('verbunden',true);document.getElementById('reconnectBanner').style.display='none';});conn.on('data',handleHost);conn.on('close',()=>{document.getElementById('reconnectBanner').style.display='block';retryConn();});}catch(e){}}},3000);}
 
   function handleHost(data){
     switch(data.type){
       case 'assigned':
-        myTeam=data;
-        badge(document.getElementById('teamBadge'));
-        badge(document.getElementById('teamBadge2'));
-        show(data.gameStarted?'playScreen':'waitScreen');
+        myTeam=data;badge(document.getElementById('teamBadge'));
+        const tag=document.getElementById('myTeamTag');tag.style.display='inline-block';tag.textContent=data.emoji+' '+data.teamName;tag.style.background=data.color;tag.style.color='#fff';
+        if(!data.gameStarted)show('waitScreen');
         break;
-      case 'gameStart':
-        show('playScreen');
-        break;
+      case 'question': renderQuestion(data);break;
+      case 'answerAck': ackAnswer(data.correct);break;
+      case 'retry': enableOptions();document.getElementById('feedback').textContent='Nochmal versuchen!';break;
+      case 'roundResult': renderRoundResult(data);break;
+      case 'matchEnd': renderEnd(data);break;
+      case 'backToLobby': show('waitScreen');break;
     }
   }
 
-  // Name vorausfüllen
-  const saved=localStorage.getItem('fbName'); if(saved)document.getElementById('nameInput').value=saved;
+  function renderQuestion(d){
+    curQ=d;myRole=d.role;answered=false;qShownAt=performance.now();
+    show('playScreen');
+    const ps=document.getElementById('playScreen');ps.classList.toggle('spectate',d.role!=='active');
+    document.getElementById('roleBanner').textContent = d.role==='active' ? '🎯 Du bist dran – antworte schnell!' : '👀 Dein Team beantwortet – lies mit!';
+    document.getElementById('roleBanner').style.color = d.role==='active' ? '#f1c40f' : '#9fb0d6';
+    document.getElementById('questionText').textContent='Frage '+(d.qIndex+1)+': '+d.frage;
+    const wrap=document.getElementById('options');wrap.innerHTML='';
+    d.antworten.forEach((a,i)=>{
+      const b=document.createElement('button');b.className='opt';b.textContent=a;
+      if(d.role==='active'){b.onclick=()=>choose(i,b);}else{b.disabled=true;}
+      wrap.appendChild(b);
+    });
+    document.getElementById('feedback').textContent='';
+  }
+  function choose(i,btn){
+    if(answered||myRole!=='active')return;answered=true;
+    document.querySelectorAll('#options .opt').forEach(o=>{o.disabled=true;o.classList.remove('chosen');});
+    btn.classList.add('chosen');
+    conn.send({type:'answer',qIndex:curQ.qIndex,choice:i,reactionMs:Math.round(performance.now()-qShownAt)});
+    document.getElementById('feedback').textContent='Antwort gesendet…';
+  }
+  function enableOptions(){answered=false;document.querySelectorAll('#options .opt').forEach(o=>{o.disabled=false;o.classList.remove('chosen','wrong','correct');});}
+  function ackAnswer(correct){
+    document.getElementById('feedback').textContent = correct ? '✅ Richtig!' : '❌ Falsch – Ersatz übernimmt (falls vorhanden).';
+    const chosen=document.querySelector('#options .opt.chosen');if(chosen)chosen.classList.add(correct?'correct':'wrong');
+  }
+  function renderRoundResult(d){
+    show('playScreen');document.getElementById('playScreen').classList.add('spectate');
+    const opts=document.querySelectorAll('#options .opt');
+    opts.forEach((o,i)=>{o.disabled=true;o.classList.toggle('correct',i===d.correctIndex);});
+    const won = d.winner===myTeam.team;
+    document.getElementById('roleBanner').textContent = d.winner ? (won?'⚽ Dein Team gewinnt die Frage!':'Gegner war schneller…') : 'Niemand – Ball bleibt.';
+    document.getElementById('roleBanner').style.color = won?'#2ecc71':'#9fb0d6';
+    document.getElementById('feedback').textContent='Richtige Antwort: '+(d.antworten?d.antworten[d.correctIndex]:'');
+  }
+  function renderEnd(d){
+    show('endScreen');
+    document.getElementById('endScore').textContent='🔵 '+d.score.A+' : '+d.score.B+' 🔴';
+    const won=d.winner===myTeam.team;
+    document.getElementById('endTitle').textContent = d.winner ? (won?'🏆 Ihr habt gewonnen!':'Diesmal verloren') : '🤝 Unentschieden!';
+    document.getElementById('endText').textContent = d.winner? ('Sieger: '+(d.winner==='A'?'Team Blau':'Team Rot')) : '';
+  }
 </script>
 </body>
 </html>

@@ -1,0 +1,162 @@
+[
+  {
+    "frage": "Fasse zusammen: 4x + 5x",
+    "antworten": [
+      "20x",
+      "9x",
+      "45x",
+      "9"
+    ],
+    "richtig": 1
+  },
+  {
+    "frage": "Fasse zusammen: 7a − 3a",
+    "antworten": [
+      "4a",
+      "4",
+      "21a",
+      "10a"
+    ],
+    "richtig": 0
+  },
+  {
+    "frage": "Multipliziere aus: 3·(x + 2)",
+    "antworten": [
+      "3x + 2",
+      "x + 6",
+      "3x + 6",
+      "3x + 5"
+    ],
+    "richtig": 2
+  },
+  {
+    "frage": "Vereinfache: 2x + 3 + 4x",
+    "antworten": [
+      "6x + 3",
+      "9x",
+      "5x + 4",
+      "6x + 7"
+    ],
+    "richtig": 0
+  },
+  {
+    "frage": "Klammere aus: 6x + 9",
+    "antworten": [
+      "6·(x + 3)",
+      "3·(2x + 3)",
+      "3·(2x + 9)",
+      "9·(x + 1)"
+    ],
+    "richtig": 1
+  },
+  {
+    "frage": "Was ergibt x · x ?",
+    "antworten": [
+      "2x",
+      "x",
+      "x²",
+      "2x²"
+    ],
+    "richtig": 2
+  },
+  {
+    "frage": "Was ergibt x + x ?",
+    "antworten": [
+      "x²",
+      "2x",
+      "2",
+      "x"
+    ],
+    "richtig": 1
+  },
+  {
+    "frage": "Löse die Minusklammer auf: −(x − 4)",
+    "antworten": [
+      "−x − 4",
+      "x − 4",
+      "−x + 4",
+      "x + 4"
+    ],
+    "richtig": 2
+  },
+  {
+    "frage": "Multipliziere aus: 2·(3x − 5)",
+    "antworten": [
+      "6x − 10",
+      "6x − 5",
+      "5x − 10",
+      "6x + 10"
+    ],
+    "richtig": 0
+  },
+  {
+    "frage": "Fasse zusammen: 5a + 2b + 3a",
+    "antworten": [
+      "10ab",
+      "7a + 3b",
+      "8a + 2b",
+      "8ab"
+    ],
+    "richtig": 2
+  },
+  {
+    "frage": "Setze x = 3 ein: 2x + 1",
+    "antworten": [
+      "6",
+      "7",
+      "9",
+      "5"
+    ],
+    "richtig": 1
+  },
+  {
+    "frage": "Setze x = 4 ein: 3x − 2",
+    "antworten": [
+      "14",
+      "12",
+      "5",
+      "10"
+    ],
+    "richtig": 3
+  },
+  {
+    "frage": "Multipliziere: 2x · 3x",
+    "antworten": [
+      "6x",
+      "6x²",
+      "5x²",
+      "6x³"
+    ],
+    "richtig": 1
+  },
+  {
+    "frage": "Vereinfache: 8x − 3x + x",
+    "antworten": [
+      "4x",
+      "12x",
+      "6x",
+      "6"
+    ],
+    "richtig": 2
+  },
+  {
+    "frage": "Klammere aus: 10x − 15",
+    "antworten": [
+      "5·(2x + 3)",
+      "10·(x − 15)",
+      "5·(2x − 3)",
+      "5·(x − 3)"
+    ],
+    "richtig": 2
+  },
+  {
+    "frage": "Vereinfache: 3·(x + 1) + 2x",
+    "antworten": [
+      "5x + 3",
+      "5x + 1",
+      "6x + 3",
+      "3x + 5"
+    ],
+    "richtig": 0
+  }
+]
