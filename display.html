@@ -92,8 +92,12 @@
     document.getElementById('ball').style.left=ballLeft(s.ballPos||0,goal);
 
     const qEl=document.getElementById('question'),oEl=document.getElementById('opts');
-    if(s.currentQuestion){qEl.textContent=s.currentQuestion.frage;
+    if(s.phase==='roundresult'&&s.currentQuestion){qEl.textContent=s.currentQuestion.frage;
       oEl.innerHTML=s.currentQuestion.antworten.map((a,i)=>`<span class="opt ${s.currentQuestion.richtig===i?'correct':''}">${esc(a)}</span>`).join('');}
+    else if(s.phase==='play'&&s.currentQuestion){qEl.textContent='⚽ Frage '+((s.currentQuestion.qIndex||0)+1)+' läuft — wer ist am Ball?';
+      const an=s.activeNames||{A:[],B:[]};
+      oEl.innerHTML='<span class="opt" style="border-color:'+s.teams.A.color+'">'+s.teams.A.emoji+' '+((an.A&&an.A.length)?an.A.map(esc).join(', '):'…')+'</span>'+
+                    '<span class="opt" style="border-color:'+s.teams.B.color+'">'+s.teams.B.emoji+' '+((an.B&&an.B.length)?an.B.map(esc).join(', '):'…')+'</span>';}
     else{qEl.textContent='';oEl.innerHTML='';}
 
     if(s.goalBy&&s.goalBy!==lastGoalShown){lastGoalShown=s.goalBy;const f=document.getElementById('goalflash');

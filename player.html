@@ -30,6 +30,7 @@
   .opt.chosen{outline:3px solid #ffd633}
   .spectate .opt{cursor:default;opacity:.78}
   .banner{font-size:1.2rem;font-weight:800}
+  .banner.dran{font-size:1.7rem;background:#ffd633;color:#1a3a10;padding:10px 22px;border-radius:14px;box-shadow:0 4px 16px rgba(255,214,51,.4)}
   .reconnect{position:fixed;top:0;left:0;right:0;background:#e67e22;color:#fff;text-align:center;padding:6px;font-size:.85rem;display:none}
   .muted{color:#9ecbaa}
   .big{font-size:2rem;font-weight:900}
@@ -75,6 +76,7 @@
 
   function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
   function setStatus(t,ok){document.getElementById('statusText').textContent=t;document.getElementById('dot').className='dot'+(ok?' green':'');}
+  function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
   function badge(el){el.textContent=myTeam.emoji+' '+myTeam.teamName;el.style.background=myTeam.color;el.style.color='#fff';}
 
   if(!hostId)setStatus('Kein Host-Link! QR erneut scannen.',false);
@@ -106,20 +108,26 @@
       const tag=document.getElementById('myTeamTag');tag.style.display='inline-block';tag.textContent=data.emoji+' '+data.teamName;tag.style.background=data.color;tag.style.color='#fff';
       if(!data.gameStarted)show('waitScreen');break;
     case 'question':renderQuestion(data);break;
+    case 'spectate':renderSpectate(data);break;
     case 'answerAck':ackAnswer(data.correct);break;
     case 'retry':enableOptions();document.getElementById('feedback').textContent='Nochmal versuchen!';break;
     case 'roundResult':renderRoundResult(data);break;
     case 'matchEnd':renderEnd(data);break;
     case 'backToLobby':show('waitScreen');break;}}
 
-  function renderQuestion(d){curQ=d;myRole=d.role;answered=false;qShownAt=performance.now();show('playScreen');
-    const ps=document.getElementById('playScreen');ps.classList.toggle('spectate',d.role!=='active');
-    document.getElementById('roleBanner').textContent=d.role==='active'?'🎯 Du bist dran – antworte schnell!':'👀 Dein Team beantwortet – lies mit!';
-    document.getElementById('roleBanner').style.color=d.role==='active'?'#ffd633':'#9ecbaa';
+  function renderQuestion(d){curQ=d;myRole='active';answered=false;qShownAt=performance.now();show('playScreen');
+    document.getElementById('playScreen').classList.remove('spectate');
+    const rb=document.getElementById('roleBanner');rb.className='banner dran';rb.textContent='🎯 DU BIST DRAN!';rb.style.color='';
     document.getElementById('questionText').textContent='Frage '+(d.qIndex+1)+': '+d.frage;
     const wrap=document.getElementById('options');wrap.innerHTML='';
-    d.antworten.forEach((a,i)=>{const b=document.createElement('button');b.className='opt';b.textContent=a;
-      if(d.role==='active'){b.onclick=()=>choose(i,b);}else{b.disabled=true;}wrap.appendChild(b);});
+    d.antworten.forEach((a,i)=>{const b=document.createElement('button');b.className='opt';b.textContent=a;b.onclick=()=>choose(i,b);wrap.appendChild(b);});
+    document.getElementById('feedback').textContent='';}
+  function renderSpectate(d){myRole='spectate';answered=false;show('playScreen');
+    document.getElementById('playScreen').classList.add('spectate');
+    const rb=document.getElementById('roleBanner');rb.className='banner';rb.textContent='👀 Du bist gerade Zuschauer';rb.style.color='#9ecbaa';
+    const names=(d.activeNames&&d.activeNames.length)?d.activeNames.map(esc).join(' & '):'…';
+    document.getElementById('questionText').innerHTML='Am Ball für dein Team:<br><b style="font-size:1.4rem;color:#ffd633">'+names+'</b>';
+    document.getElementById('options').innerHTML='<div class="muted" style="padding:18px;line-height:1.5">Die Frage sehen nur die Aktiven.<br>Mach dich bereit – bald bist du dran! ⚽</div>';
     document.getElementById('feedback').textContent='';}
   function choose(i,btn){if(answered||myRole!=='active')return;answered=true;
     document.querySelectorAll('#options .opt').forEach(o=>{o.disabled=true;o.classList.remove('chosen');});btn.classList.add('chosen');
@@ -129,10 +137,13 @@
   function ackAnswer(correct){document.getElementById('feedback').textContent=correct?'✅ Richtig!':'❌ Falsch – Ersatz übernimmt (falls vorhanden).';
     const ch=document.querySelector('#options .opt.chosen');if(ch)ch.classList.add(correct?'correct':'wrong');}
   function renderRoundResult(d){show('playScreen');document.getElementById('playScreen').classList.add('spectate');
-    document.querySelectorAll('#options .opt').forEach((o,i)=>{o.disabled=true;o.classList.toggle('correct',i===d.correctIndex);});
+    const rb=document.getElementById('roleBanner');rb.className='banner';
     const won=d.winner===myTeam.team;
-    document.getElementById('roleBanner').textContent=d.winner?(won?'⚽ Dein Team gewinnt die Frage!':'Gegner war schneller…'):'Niemand – Ball bleibt.';
-    document.getElementById('roleBanner').style.color=won?'#7CFC00':'#9ecbaa';
+    rb.textContent=d.winner?(won?'⚽ Dein Team gewinnt die Frage!':'Gegner war schneller…'):'Niemand – Ball bleibt.';
+    rb.style.color=won?'#7CFC00':'#9ecbaa';
+    document.getElementById('questionText').textContent=d.frage?('Frage: '+d.frage):'';
+    const wrap=document.getElementById('options');wrap.innerHTML='';
+    (d.antworten||[]).forEach((a,i)=>{const b=document.createElement('div');b.className='opt'+(i===d.correctIndex?' correct':'');b.textContent=a;wrap.appendChild(b);});
     document.getElementById('feedback').textContent='Richtige Antwort: '+(d.antworten?d.antworten[d.correctIndex]:'');}
   function renderEnd(d){show('endScreen');
     const eA=d.teams?d.teams.A.emoji:'🔵',eB=d.teams?d.teams.B.emoji:'🔴';

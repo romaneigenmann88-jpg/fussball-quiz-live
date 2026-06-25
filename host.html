@@ -185,7 +185,7 @@
     let p=players.find(x=>x.name.toLowerCase()===name.toLowerCase());
     if(p){playerConns.delete(p.id);p.id=conn.peer;}else{p={id:conn.peer,name,team:assignTeam()};players.push(p);}
     playerConns.set(conn.peer,conn);sendAssigned(p);
-    if(gameStarted&&round)conn.send({type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'spectate'});
+    if(gameStarted&&round)conn.send({type:'spectate',activeNames:activeNames(p.team)});
     renderLobby();broadcastState();
   }
   function sendAssigned(p){const t=TEAMS[p.team];const c=playerConns.get(p.id);if(c)c.send({type:'assigned',team:p.team,teamName:t.name,emoji:t.emoji,color:t.color,gameStarted});}
@@ -198,11 +198,14 @@
     for(let i=0;i<n;i++){const p=roster[(ptr+i)%roster.length];active.add(p.id);used.add(p.id);}
     rotation[team]=roster.length?((ptr+n)%roster.length):0;
     return {active,used,roster,required:Math.max(1,n),correct:0,answered:new Set()};}
+  function activeNames(team){return [...round.teams[team].active].map(id=>{const p=players.find(x=>x.id===id);return p?p.name:'?';});}
+  function sendSpectate(pid,team){sendTo(pid,{type:'spectate',activeNames:activeNames(team)});}
+  function sendRoundViews(){players.forEach(p=>{if(round.teams[p.team].active.has(p.id))sendTo(p.id,{type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'active'});else sendSpectate(p.id,p.team);});}
+  function updateSpectators(team){rosterOf(team).forEach(p=>{if(!round.teams[team].active.has(p.id))sendSpectate(p.id,team);});}
   function startRound(qIndex){if(!gameStarted||!questions.length)return;
     qIndex=((qIndex%questions.length)+questions.length)%questions.length;
     round={qIndex,question:questions[qIndex],ended:false,teams:{A:pickActive('A'),B:pickActive('B')}};
-    players.forEach(p=>{const role=round.teams[p.team].active.has(p.id)?'active':'spectate';
-      sendTo(p.id,{type:'question',qIndex,frage:round.question.frage,antworten:round.question.antworten,role});});
+    sendRoundViews();
     renderLobby();broadcastState();}
   function handleAnswer(conn,data){if(!round||round.ended)return;
     const p=players.find(x=>x.id===conn.peer);if(!p)return;const T=round.teams[p.team];
@@ -210,7 +213,7 @@
     T.answered.add(p.id);const correct=(data.choice===round.question.richtig);sendTo(p.id,{type:'answerAck',correct});
     if(correct){T.correct++;if(T.correct>=T.required){endRound(p.team);return;}}
     else{const sub=T.roster.find(rp=>!T.used.has(rp.id));
-      if(sub){T.active.delete(p.id);T.active.add(sub.id);T.used.add(sub.id);sendTo(sub.id,{type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'active'});}
+      if(sub){T.active.delete(p.id);T.active.add(sub.id);T.used.add(sub.id);sendTo(sub.id,{type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'active'});updateSpectators(p.team);}
       else{T.answered.delete(p.id);sendTo(p.id,{type:'retry'});}}
     renderLobby();broadcastState();}
   function endRound(winner){round.ended=true;let goalBy=null;
@@ -259,7 +262,7 @@
   function stateMsg(goalBy){let cq=null;
     if(round&&gameStarted)cq={frage:round.question.frage,antworten:round.question.antworten,richtig:round.ended?round.question.richtig:null,qIndex:round.qIndex};
     return {type:'state',phase:!gameStarted?'lobby':(round&&round.ended?'roundresult':'play'),
-      ballPos,goal:GOAL,score,goalBy:goalBy||null,currentQuestion:cq,matchWinner:null,teams:pubTeams(),
+      ballPos,goal:GOAL,score,goalBy:goalBy||null,currentQuestion:cq,activeNames:(round&&gameStarted)?{A:activeNames('A'),B:activeNames('B')}:null,matchWinner:null,teams:pubTeams(),
       joinUrl:hostId?location.href.substring(0,location.href.lastIndexOf('/')+1)+'player.html?host='+hostId:''};}
   function broadcastState(goalBy){const m=stateMsg(goalBy);displayConns.forEach(c=>c.send(m));}
 
