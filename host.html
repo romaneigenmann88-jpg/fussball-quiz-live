@@ -82,8 +82,10 @@
         <span class="vs">vs</span>
         <select id="teamSelB"></select>
       </div>
-      <label style="margin-top:12px">Aktive Spieler pro Frage (pro Team)</label>
-      <select id="activePerQuestion"><option value="2" selected>2 (Standard)</option><option value="1">1</option></select>
+      <label style="margin-top:12px">Spielmodus</label>
+      <select id="modeSel"><option value="comm" selected>🗣️ Kommunikation (Farben)</option><option value="standard">Standard (alle Aktiven antworten)</option></select>
+      <label style="margin-top:12px">Aktive pro Frage (nur Standard-Modus)</label>
+      <select id="activePerQuestion"><option value="2" selected>2</option><option value="1">1</option></select>
     </div>
   </div>
 
@@ -147,13 +149,18 @@
   ];
   let TEAMS={A:{key:'A',...natTeam(0)},B:{key:'B',...natTeam(1)}};
   function natTeam(i){const x=NATIONS[i];return {name:x.n,emoji:x.f,color:x.c};}
+  const TEAM_PALETTES={
+    A:[{name:'Rot',hex:'#e74c3c'},{name:'Blau',hex:'#3498db'},{name:'Grün',hex:'#27ae60'},{name:'Gelb',hex:'#f1c40f'}],
+    B:[{name:'Orange',hex:'#e67e22'},{name:'Violett',hex:'#9b59b6'},{name:'Türkis',hex:'#16c4c4'},{name:'Pink',hex:'#e84393'}]
+  };
+  function shuffle(a){return a.sort(()=>Math.random()-.5);}
 
   let peer=null,hostId=null;
   let players=[];const playerConns=new Map();const displayConns=new Map();
   let questions=[];
   let gameStarted=false;
   let ballPos=0, score={A:0,B:0};         // ballPos -3..3, Tor bei ±3 (2 Zwischenpositionen)
-  let settings={active:2};
+  let settings={active:2,mode:'comm'};
   let rotation={A:0,B:0};let round=null;const ROUND_DELAY=3800;
   const GOAL=3;
 
@@ -185,7 +192,7 @@
     let p=players.find(x=>x.name.toLowerCase()===name.toLowerCase());
     if(p){playerConns.delete(p.id);p.id=conn.peer;}else{p={id:conn.peer,name,team:assignTeam()};players.push(p);}
     playerConns.set(conn.peer,conn);sendAssigned(p);
-    if(gameStarted&&round)conn.send({type:'spectate',activeNames:activeNames(p.team)});
+    if(gameStarted&&round)conn.send({type:'spectate',activeNames:roundActiveNames(p.team)});
     renderLobby();broadcastState();
   }
   function sendAssigned(p){const t=TEAMS[p.team];const c=playerConns.get(p.id);if(c)c.send({type:'assigned',team:p.team,teamName:t.name,emoji:t.emoji,color:t.color,gameStarted});}
@@ -198,18 +205,38 @@
     for(let i=0;i<n;i++){const p=roster[(ptr+i)%roster.length];active.add(p.id);used.add(p.id);}
     rotation[team]=roster.length?((ptr+n)%roster.length):0;
     return {active,used,roster,required:Math.max(1,n),correct:0,answered:new Set()};}
-  function activeNames(team){return [...round.teams[team].active].map(id=>{const p=players.find(x=>x.id===id);return p?p.name:'?';});}
+  const nameOf=id=>{const p=players.find(x=>x.id===id);return p?p.name:'?';};
+  function activeNames(team){return [...round.teams[team].active].map(nameOf);}
+  function commActiveNames(team){const T=round.teams[team];return [nameOf(T.strateg)+' 🧠',nameOf(T.klicker)+' 👆'];}
+  function roundActiveNames(team){return round.mode==='comm'?commActiveNames(team):activeNames(team);}
+  function pickComm(team){const roster=rosterOf(team);let ptr=rotation[team];const ids=[];
+    for(let i=0;i<Math.min(2,roster.length);i++)ids.push(roster[(ptr+i)%roster.length].id);
+    rotation[team]=roster.length?((ptr+ids.length)%roster.length):0;
+    let strateg=ids[0],klicker=ids[1]||ids[0];if(ids.length>=2&&Math.random()<.5){strateg=ids[1];klicker=ids[0];}
+    return {strateg,klicker,roster,lockedUntil:0};}
+  function assignColors(q){['A','B'].forEach(team=>{const pal=TEAM_PALETTES[team];const n=q.antworten.length;
+    const palIdx=shuffle([...pal.keys()]).slice(0,Math.min(n,pal.length));
+    round.teams[team].colorByAnswer=q.antworten.map((_,i)=>pal[palIdx[i%palIdx.length]]);});}
+  function sendCommViews(){const q=round.question;players.forEach(p=>{const T=round.teams[p.team];
+    if(p.id===T.strateg)sendTo(p.id,{type:'strateg',qIndex:round.qIndex,frage:q.frage,antworten:q.antworten.map((t,i)=>({text:t,color:T.colorByAnswer[i]})),correctIndex:q.richtig});
+    else if(p.id===T.klicker)sendTo(p.id,{type:'klicker',qIndex:round.qIndex,colors:shuffle(q.antworten.map((t,i)=>({name:T.colorByAnswer[i].name,hex:T.colorByAnswer[i].hex,answerIndex:i})))});
+    else sendTo(p.id,{type:'spectate',activeNames:commActiveNames(p.team)});});}
   function sendSpectate(pid,team){sendTo(pid,{type:'spectate',activeNames:activeNames(team)});}
   function sendRoundViews(){players.forEach(p=>{if(round.teams[p.team].active.has(p.id))sendTo(p.id,{type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'active'});else sendSpectate(p.id,p.team);});}
   function updateSpectators(team){rosterOf(team).forEach(p=>{if(!round.teams[team].active.has(p.id))sendSpectate(p.id,team);});}
   function startRound(qIndex){if(!gameStarted||!questions.length)return;
-    qIndex=((qIndex%questions.length)+questions.length)%questions.length;
-    round={qIndex,question:questions[qIndex],ended:false,teams:{A:pickActive('A'),B:pickActive('B')}};
-    sendRoundViews();
+    qIndex=((qIndex%questions.length)+questions.length)%questions.length;const q=questions[qIndex];
+    if(settings.mode==='comm'){round={qIndex,question:q,ended:false,mode:'comm',teams:{A:pickComm('A'),B:pickComm('B')}};assignColors(q);sendCommViews();}
+    else{round={qIndex,question:q,ended:false,mode:'standard',teams:{A:pickActive('A'),B:pickActive('B')}};sendRoundViews();}
     renderLobby();broadcastState();}
   function handleAnswer(conn,data){if(!round||round.ended)return;
     const p=players.find(x=>x.id===conn.peer);if(!p)return;const T=round.teams[p.team];
-    if(!T||!T.active.has(p.id)||T.answered.has(p.id)||data.qIndex!==round.qIndex)return;
+    if(!T||data.qIndex!==round.qIndex)return;
+    if(round.mode==='comm'){
+      if(p.id!==T.klicker||Date.now()<(T.lockedUntil||0))return;
+      if(data.choice===round.question.richtig){endRound(p.team);}else{T.lockedUntil=Date.now()+2000;sendTo(p.id,{type:'lock',ms:2000});}
+      return;}
+    if(!T.active||!T.active.has(p.id)||T.answered.has(p.id))return;
     T.answered.add(p.id);const correct=(data.choice===round.question.richtig);sendTo(p.id,{type:'answerAck',correct});
     if(correct){T.correct++;if(T.correct>=T.required){endRound(p.team);return;}}
     else{const sub=T.roster.find(rp=>!T.used.has(rp.id));
@@ -226,10 +253,12 @@
   function startGame(){if(players.length<2||!questions.length)return;
     if(rosterOf('A').length<1||rosterOf('B').length<1){alert('Beide Teams brauchen mindestens 1 Spieler.');return;}
     settings.active=parseInt(document.getElementById('activePerQuestion').value);
+    settings.mode=document.getElementById('modeSel').value;
+    if(settings.mode==='comm'&&(rosterOf('A').length<2||rosterOf('B').length<2)){alert('Kommunikations-Modus: beide Teams brauchen mind. 2 Spieler (Stratege + Klicker).');return;}
     gameStarted=true;rotation={A:0,B:0};score={A:0,B:0};ballPos=0;
     document.getElementById('startBtn').style.display='none';document.getElementById('stopBtn').style.display='inline-block';
     document.getElementById('scoreboard').style.display='block';document.getElementById('qbox').style.display='block';
-    ['teamSelA','teamSelB','activePerQuestion'].forEach(i=>document.getElementById(i).disabled=true);
+    ['teamSelA','teamSelB','activePerQuestion','modeSel'].forEach(i=>document.getElementById(i).disabled=true);
     startRound(0);}
   function endMatch(){gameStarted=false;round=null;const winner=score.A===score.B?null:(score.A>score.B?'A':'B');
     playerConns.forEach(c=>c.send({type:'matchEnd',score,winner,teams:pubTeams()}));
@@ -240,7 +269,7 @@
   function newMatch(){score={A:0,B:0};ballPos=0;round=null;
     document.getElementById('newBtn').style.display='none';document.getElementById('startBtn').style.display='inline-block';
     document.getElementById('scoreboard').style.display='none';
-    ['teamSelA','teamSelB','activePerQuestion'].forEach(i=>document.getElementById(i).disabled=false);
+    ['teamSelA','teamSelB','activePerQuestion','modeSel'].forEach(i=>document.getElementById(i).disabled=false);
     playerConns.forEach(c=>c.send({type:'backToLobby'}));renderLobby();broadcastState();}
 
   // ===== Rendering Lobby =====
@@ -249,7 +278,7 @@
     document.getElementById('countA').textContent=a.length;document.getElementById('countB').textContent=b.length;
     document.getElementById('thA').innerHTML=TEAMS.A.emoji+' '+esc(TEAMS.A.name)+' <span id="countA">'+a.length+'</span>';
     document.getElementById('thB').innerHTML=TEAMS.B.emoji+' '+esc(TEAMS.B.name)+' <span id="countB">'+b.length+'</span>';
-    const act=t=>(round&&!round.ended)?round.teams[t].active:new Set();const aA=act('A'),aB=act('B');
+    const act=t=>{if(!round||round.ended)return new Set();const T=round.teams[t];return T.active?T.active:new Set([T.strateg,T.klicker]);};const aA=act('A'),aB=act('B');
     document.getElementById('rosterA').innerHTML=a.map(p=>`<div class="player ${aA.has(p.id)?'active':''}">${esc(p.name)}</div>`).join('')||'<div class="muted">—</div>';
     document.getElementById('rosterB').innerHTML=b.map(p=>`<div class="player ${aB.has(p.id)?'active':''}">${esc(p.name)}</div>`).join('')||'<div class="muted">—</div>';
     document.getElementById('scoreboard').innerHTML=TEAMS.A.emoji+' '+score.A+' : '+score.B+' '+TEAMS.B.emoji;
@@ -262,7 +291,7 @@
   function stateMsg(goalBy){let cq=null;
     if(round&&gameStarted)cq={frage:round.question.frage,antworten:round.question.antworten,richtig:round.ended?round.question.richtig:null,qIndex:round.qIndex};
     return {type:'state',phase:!gameStarted?'lobby':(round&&round.ended?'roundresult':'play'),
-      ballPos,goal:GOAL,score,goalBy:goalBy||null,currentQuestion:cq,activeNames:(round&&gameStarted)?{A:activeNames('A'),B:activeNames('B')}:null,matchWinner:null,teams:pubTeams(),
+      ballPos,goal:GOAL,score,goalBy:goalBy||null,currentQuestion:cq,activeNames:(round&&gameStarted)?{A:roundActiveNames('A'),B:roundActiveNames('B')}:null,matchWinner:null,teams:pubTeams(),
       joinUrl:hostId?location.href.substring(0,location.href.lastIndexOf('/')+1)+'player.html?host='+hostId:''};}
   function broadcastState(goalBy){const m=stateMsg(goalBy);displayConns.forEach(c=>c.send(m));}
 

@@ -31,6 +31,15 @@
   .spectate .opt{cursor:default;opacity:.78}
   .banner{font-size:1.2rem;font-weight:800}
   .banner.dran{font-size:1.7rem;background:#ffd633;color:#1a3a10;padding:10px 22px;border-radius:14px;box-shadow:0 4px 16px rgba(255,214,51,.4)}
+  .banner.strateg,.banner.klicker{font-size:1.45rem;padding:10px 20px;border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+  .banner.strateg{background:#16c4c4;color:#04222a}
+  .banner.klicker{background:#ffd633;color:#1a3a10}
+  .chip{display:inline-block;min-width:74px;padding:6px 10px;border-radius:8px;font-weight:800;color:#fff;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+  .strateg-row{display:flex;align-items:center;gap:10px;text-align:left}
+  .strateg-row.correct{outline:3px solid #2ecc71;background:rgba(46,204,113,.18)}
+  .atxt{flex:1}
+  .rico{color:#2ecc71;font-weight:800;white-space:nowrap}
+  .colorbtn{font-size:1.5rem;font-weight:900;min-height:66px;text-shadow:0 2px 4px rgba(0,0,0,.45);text-align:center}
   .reconnect{position:fixed;top:0;left:0;right:0;background:#e67e22;color:#fff;text-align:center;padding:6px;font-size:.85rem;display:none}
   .muted{color:#9ecbaa}
   .big{font-size:2rem;font-weight:900}
@@ -109,6 +118,9 @@
       if(!data.gameStarted)show('waitScreen');break;
     case 'question':renderQuestion(data);break;
     case 'spectate':renderSpectate(data);break;
+    case 'strateg':renderStrateg(data);break;
+    case 'klicker':renderKlicker(data);break;
+    case 'lock':lockKlicker(data.ms);break;
     case 'answerAck':ackAnswer(data.correct);break;
     case 'retry':enableOptions();document.getElementById('feedback').textContent='Nochmal versuchen!';break;
     case 'roundResult':renderRoundResult(data);break;
@@ -136,6 +148,27 @@
   function enableOptions(){answered=false;document.querySelectorAll('#options .opt').forEach(o=>{o.disabled=false;o.classList.remove('chosen','wrong','correct');});}
   function ackAnswer(correct){document.getElementById('feedback').textContent=correct?'✅ Richtig!':'❌ Falsch – Ersatz übernimmt (falls vorhanden).';
     const ch=document.querySelector('#options .opt.chosen');if(ch)ch.classList.add(correct?'correct':'wrong');}
+  function renderStrateg(d){myRole='strateg';answered=false;show('playScreen');
+    document.getElementById('playScreen').classList.add('spectate');
+    const rb=document.getElementById('roleBanner');rb.className='banner strateg';rb.style.color='';rb.style.background='';rb.textContent='🧠 STRATEGE – sag die Farbe an, klicke NICHT!';
+    document.getElementById('questionText').textContent='Frage '+(d.qIndex+1)+': '+d.frage;
+    const wrap=document.getElementById('options');wrap.innerHTML='';
+    d.antworten.forEach((a,i)=>{const correct=i===d.correctIndex;const row=document.createElement('div');
+      row.className='opt strateg-row'+(correct?' correct':'');
+      row.innerHTML='<span class="chip" style="background:'+a.color.hex+'">'+esc(a.color.name)+'</span><span class="atxt">'+esc(a.text)+'</span>'+(correct?'<span class="rico">✓ RICHTIG</span>':'');
+      wrap.appendChild(row);});
+    document.getElementById('feedback').textContent='Sag deinem Klicker die FARBE der richtigen Antwort!';}
+  function renderKlicker(d){myRole='klicker';answered=false;curQ=d;show('playScreen');
+    document.getElementById('playScreen').classList.remove('spectate');
+    const rb=document.getElementById('roleBanner');rb.className='banner klicker';rb.style.color='';rb.style.background='';rb.textContent='👆 KLICKER – drücke die angesagte Farbe!';
+    document.getElementById('questionText').textContent='Welche Farbe sagt dein Stratege?';
+    const wrap=document.getElementById('options');wrap.innerHTML='';
+    d.colors.forEach(c=>{const b=document.createElement('button');b.className='opt colorbtn';b.style.background=c.hex;b.style.borderColor=c.hex;b.style.color='#fff';b.textContent=c.name;
+      b.onclick=()=>{conn.send({type:'answer',qIndex:d.qIndex,choice:c.answerIndex});document.getElementById('feedback').textContent='Gedrückt: '+c.name+' …';};wrap.appendChild(b);});
+    document.getElementById('feedback').textContent='Hör auf deinen Strategen und drücke die Farbe!';}
+  function lockKlicker(ms){const btns=document.querySelectorAll('#options .colorbtn');btns.forEach(b=>b.disabled=true);
+    document.getElementById('feedback').textContent='❌ Falsch! '+(ms/1000)+' Sek Sperre…';
+    setTimeout(()=>{btns.forEach(b=>b.disabled=false);document.getElementById('feedback').textContent='Nochmal! Welche Farbe?';},ms);}
   function renderRoundResult(d){show('playScreen');document.getElementById('playScreen').classList.add('spectate');
     const rb=document.getElementById('roleBanner');rb.className='banner';
     const won=d.winner===myTeam.team;
