@@ -8,36 +8,54 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
   *{box-sizing:border-box}
-  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b132b;color:#e8eefc}
-  header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#1c2541;border-bottom:1px solid #2a3a66}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#eafff0;
+       background:linear-gradient(160deg,#0a4d24 0%,#0c3a1d 60%,#072a14 100%);
+       background-color:#0b3d1e;min-height:100vh}
+  header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:rgba(0,0,0,.25);border-bottom:2px solid #1d7a3a}
   header h1{font-size:1.2rem;margin:0}
   .dot{width:12px;height:12px;border-radius:50%;background:#e74c3c;display:inline-block}
-  .dot.green{background:#2ecc71}
-  main{max-width:1100px;margin:0 auto;padding:20px;display:grid;grid-template-columns:320px 1fr;gap:20px}
-  .card{background:#1c2541;border:1px solid #2a3a66;border-radius:14px;padding:16px}
-  .card h2{margin:0 0 12px;font-size:1rem;color:#a9bce0}
-  .join-url{font-size:.8rem;word-break:break-all;background:#0b132b;padding:8px;border-radius:8px;cursor:pointer}
+  .dot.green{background:#7CFC00}
+  main{max-width:1200px;margin:0 auto;padding:20px;display:grid;grid-template-columns:330px 1fr;gap:20px}
+  .card{background:rgba(255,255,255,.06);border:1px solid #1d7a3a;border-radius:14px;padding:16px}
+  .card h2{margin:0 0 12px;font-size:1rem;color:#ffe27a}
+  .join-url{font-size:.8rem;word-break:break-all;background:rgba(0,0,0,.3);padding:8px;border-radius:8px;cursor:pointer}
   #qrcode{background:#fff;padding:10px;border-radius:10px;display:inline-block;margin-top:10px}
-  label{display:block;font-size:.85rem;margin:10px 0 4px;color:#a9bce0}
-  select,textarea{width:100%;background:#0b132b;color:#e8eefc;border:1px solid #2a3a66;border-radius:8px;padding:8px;font-family:inherit}
-  textarea{min-height:110px;font-size:.8rem}
-  .btn{border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;font-size:.95rem}
-  .btn-primary{background:#2ecc71;color:#06281a}
-  .btn-primary:disabled{background:#3a4a66;color:#7a8aae;cursor:not-allowed}
+  label{display:block;font-size:.85rem;margin:10px 0 4px;color:#bfe9cd}
+  select,textarea,input{background:rgba(0,0,0,.3);color:#eafff0;border:1px solid #2c8c4c;border-radius:8px;padding:8px;font-family:inherit}
+  select{width:100%}
+  .btn{border:none;border-radius:10px;padding:10px 16px;font-weight:800;cursor:pointer;font-size:.95rem}
+  .btn-primary{background:#ffd633;color:#1a3a10}
+  .btn-primary:disabled{background:#3a5a44;color:#8fb89c;cursor:not-allowed}
   .btn-danger{background:#e74c3c;color:#fff}
-  .btn-ghost{background:#2a3a66;color:#e8eefc;text-decoration:none}
+  .btn-ghost{background:rgba(255,255,255,.12);color:#eafff0;text-decoration:none}
+  .teamsel{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+  .vs{font-weight:900;color:#ffe27a}
   .teams{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .team{border-radius:12px;padding:12px}
-  .team.A{background:rgba(52,152,219,.15);border:1px solid #3498db}
-  .team.B{background:rgba(231,76,60,.15);border:1px solid #e74c3c}
+  .team{border-radius:12px;padding:12px;background:rgba(0,0,0,.25)}
   .team h3{margin:0 0 8px;display:flex;justify-content:space-between;font-size:.95rem}
-  .player{padding:5px 8px;background:#0b132b;border-radius:7px;margin:4px 0;font-size:.85rem}
-  .player.active{outline:2px solid #f1c40f}
-  .muted{color:#7a8aae;font-size:.8rem}
+  .player{padding:5px 8px;background:rgba(255,255,255,.08);border-radius:7px;margin:4px 0;font-size:.85rem}
+  .player.active{outline:2px solid #ffd633}
+  .muted{color:#9ecbaa;font-size:.8rem}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .pill{background:#0b132b;border:1px solid #2a3a66;border-radius:999px;padding:4px 10px;font-size:.8rem}
+  .pill{background:rgba(0,0,0,.3);border:1px solid #2c8c4c;border-radius:999px;padding:4px 10px;font-size:.8rem}
   .scoreboard{font-size:1.4rem;font-weight:900;text-align:center;margin:6px 0}
-  .qbox{background:#0b132b;border-radius:10px;padding:10px;margin-top:10px;font-size:.9rem}
+  .qbox{background:rgba(0,0,0,.3);border-radius:10px;padding:10px;margin-top:10px;font-size:.9rem}
+  /* Editor */
+  .editor-layout{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+  .editor-col-label{font-size:.8rem;color:#bfe9cd;margin-bottom:4px}
+  #questionsEditor{width:100%;min-height:300px;font-size:.78rem;font-family:ui-monospace,Consolas,monospace}
+  #editorPreview{max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+  .qcard{background:rgba(0,0,0,.25);border:1px solid #2c8c4c;border-radius:10px;padding:8px}
+  .qcard .qhdr{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .qnum{font-size:.75rem;color:#ffe27a;font-weight:700}
+  .qcard input.q{width:100%;font-size:.85rem;margin-bottom:6px}
+  .arow{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+  .badge{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:bold;cursor:pointer;flex-shrink:0;background:#2c5c3c;color:#bfe9cd}
+  .badge.correct{background:#2ecc71;color:#08230f}
+  .arow input{flex:1;font-size:.8rem}
+  .del{background:none;border:none;color:#ff8a7a;cursor:pointer;font-size:.75rem}
+  .editor-status{font-size:.8rem;min-height:18px;margin-top:4px}
+  details summary{cursor:pointer;color:#ffe27a;font-weight:700}
 </style>
 </head>
 <body>
@@ -58,32 +76,52 @@
       <div id="qrcode"></div>
     </div>
     <div class="card" style="margin-top:16px">
-      <h2>Einstellungen</h2>
-      <label>Aktive Spieler pro Frage (pro Team)</label>
-      <select id="activePerQuestion">
-        <option value="2" selected>2 (Standard)</option>
-        <option value="1">1</option>
-      </select>
-      <label>Fragen (JSON importieren)</label>
-      <textarea id="questionsInput" placeholder='[ {"frage":"…","antworten":["A","B","C","D"],"richtig":0} ]'></textarea>
-      <div class="muted" id="questionsStatus">Noch keine Fragen geladen.</div>
+      <h2>Teams (WM)</h2>
+      <div class="teamsel">
+        <select id="teamSelA"></select>
+        <span class="vs">vs</span>
+        <select id="teamSelB"></select>
+      </div>
+      <label style="margin-top:12px">Aktive Spieler pro Frage (pro Team)</label>
+      <select id="activePerQuestion"><option value="2" selected>2 (Standard)</option><option value="1">1</option></select>
     </div>
   </div>
 
   <div>
     <div class="card">
+      <details open>
+        <summary>📝 Fragen-Editor (JSON laden oder grafisch bearbeiten)</summary>
+        <div class="row" style="margin-top:8px">
+          <button class="btn btn-ghost" id="sampleBtn">⚽ Terme-Beispiel laden</button>
+          <button class="btn btn-ghost" id="clearBtn">🗑 Leeren</button>
+          <span class="editor-status" id="editorStatus"></span>
+        </div>
+        <div class="editor-layout">
+          <div>
+            <div class="editor-col-label">📋 JSON-Code (kopier-/einfügbar)</div>
+            <textarea id="questionsEditor" spellcheck="false" placeholder='[ {"frage":"…","antworten":["A","B","C","D"],"richtig":0} ]'></textarea>
+          </div>
+          <div>
+            <div class="editor-col-label">👁 Vorschau (live bearbeiten — Buchstabe anklicken = richtig)</div>
+            <div id="editorPreview"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="card" style="margin-top:16px">
       <div class="row">
         <h2 style="margin:0">Spielleitung</h2>
         <span class="pill"><span id="playerCount">0</span> Spieler</span>
         <span style="flex:1"></span>
-        <button class="btn btn-primary" id="startBtn" disabled>Spiel starten</button>
+        <button class="btn btn-primary" id="startBtn" disabled>Anpfiff</button>
         <button class="btn btn-danger" id="stopBtn" style="display:none">Schlusspfiff</button>
         <button class="btn btn-ghost" id="newBtn" style="display:none">Neues Match</button>
       </div>
-      <div class="scoreboard" id="scoreboard" style="display:none">🔵 <span id="scoreA">0</span> : <span id="scoreB">0</span> 🔴</div>
+      <div class="scoreboard" id="scoreboard" style="display:none"></div>
       <div class="teams" style="margin-top:14px">
-        <div class="team A"><h3>🔵 Team Blau <span id="countA">0</span></h3><div id="rosterA"></div></div>
-        <div class="team B"><h3>🔴 Team Rot <span id="countB">0</span></h3><div id="rosterB"></div></div>
+        <div class="team"><h3 id="thA">Team A <span id="countA">0</span></h3><div id="rosterA"></div></div>
+        <div class="team"><h3 id="thB">Team B <span id="countB">0</span></h3><div id="rosterB"></div></div>
       </div>
       <div class="qbox" id="qbox" style="display:none"></div>
       <div class="muted" style="margin-top:12px" id="phaseInfo">Warte auf Spieler…</div>
@@ -96,196 +134,211 @@
   const METERED_CONFIG= { username:'c4ca643ec3ef89475fda8aaf', credential:'958T4scRQJRKgSyg' };
   function buildIce(){const u=METERED_CONFIG.username,c=METERED_CONFIG.credential;return [{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.relay.metered.ca:80'},{urls:'turn:global.relay.metered.ca:80',username:u,credential:c},{urls:'turn:global.relay.metered.ca:80?transport=tcp',username:u,credential:c},{urls:'turn:global.relay.metered.ca:443',username:u,credential:c},{urls:'turns:global.relay.metered.ca:443?transport=tcp',username:u,credential:c}];}
 
-  const TEAMS={A:{key:'A',name:'Team Blau',emoji:'🔵',color:'#3498db'},B:{key:'B',name:'Team Rot',emoji:'🔴',color:'#e74c3c'}};
+  // ===== WM-Nationen (Flagge, Name, Farbe) =====
+  const NATIONS=[
+    {f:'🇨🇭',n:'Schweiz',c:'#d52b1e'},{f:'🇩🇪',n:'Deutschland',c:'#111'},{f:'🇫🇷',n:'Frankreich',c:'#0055A4'},
+    {f:'🇧🇷',n:'Brasilien',c:'#f5d800'},{f:'🇦🇷',n:'Argentinien',c:'#6CACE4'},{f:'🇪🇸',n:'Spanien',c:'#AA151B'},
+    {f:'🇮🇹',n:'Italien',c:'#0066CC'},{f:'🇵🇹',n:'Portugal',c:'#C8102E'},{f:'🇳🇱',n:'Niederlande',c:'#FF6900'},
+    {f:'🇧🇪',n:'Belgien',c:'#C8102E'},{f:'🇭🇷',n:'Kroatien',c:'#1763a6'},{f:'🇺🇸',n:'USA',c:'#1f3b8b'},
+    {f:'🇲🇽',n:'Mexiko',c:'#1b7a3d'},{f:'🇨🇦',n:'Kanada',c:'#d52b1e'},{f:'🇯🇵',n:'Japan',c:'#bc002d'},
+    {f:'🇰🇷',n:'Südkorea',c:'#0047a0'},{f:'🇲🇦',n:'Marokko',c:'#c1272d'},{f:'🇸🇳',n:'Senegal',c:'#00853f'},
+    {f:'🇦🇹',n:'Österreich',c:'#ef3340'},{f:'🇵🇱',n:'Polen',c:'#dc143c'},{f:'🇩🇰',n:'Dänemark',c:'#c60c30'},
+    {f:'🇺🇾',n:'Uruguay',c:'#3a8ddb'},{f:'🇨🇴',n:'Kolumbien',c:'#f5d800'},{f:'🇳🇬',n:'Nigeria',c:'#008751'}
+  ];
+  let TEAMS={A:{key:'A',...natTeam(0)},B:{key:'B',...natTeam(1)}};
+  function natTeam(i){const x=NATIONS[i];return {name:x.n,emoji:x.f,color:x.c};}
+
   let peer=null,hostId=null;
-  let players=[];                 // {id,name,team}
-  const playerConns=new Map();
-  const displayConns=new Map();
+  let players=[];const playerConns=new Map();const displayConns=new Map();
   let questions=[];
   let gameStarted=false;
-  let ballPos=0, score={A:0,B:0};
+  let ballPos=0, score={A:0,B:0};         // ballPos -3..3, Tor bei ±3 (2 Zwischenpositionen)
   let settings={active:2};
-  let rotation={A:0,B:0};
-  let round=null;
-  const ROUND_DELAY=3800;
+  let rotation={A:0,B:0};let round=null;const ROUND_DELAY=3800;
+  const GOAL=3;
 
   // ===== Peer + Backoff =====
-  let rDelay=1000,rTimer=null;
-  function scheduleReconnect(){if(rTimer||!peer||peer.destroyed)return;rTimer=setTimeout(()=>{rTimer=null;if(peer&&!peer.destroyed&&peer.disconnected){try{peer.reconnect();}catch(e){}}rDelay=Math.min(rDelay*2,30000);},rDelay);}
+  let rD=1000,rT=null;
+  function scheduleReconnect(){if(rT||!peer||peer.destroyed)return;rT=setTimeout(()=>{rT=null;if(peer&&!peer.destroyed&&peer.disconnected){try{peer.reconnect();}catch(e){}}rD=Math.min(rD*2,30000);},rD);}
   function setStatus(t,ok){document.getElementById('statusText').textContent=t;document.getElementById('statusDot').className='dot'+(ok?' green':'');}
-
   function initPeer(){
     peer=new Peer({...PEER_CONFIG, config:{iceServers:buildIce()}});
-    peer.on('open',id=>{
-      hostId=id;rDelay=1000;if(rTimer){clearTimeout(rTimer);rTimer=null;}
-      setStatus('bereit',true);
-      const base=location.href.substring(0,location.href.lastIndexOf('/')+1);
-      const joinUrl=base+'player.html?host='+id;
-      document.getElementById('joinUrl').textContent=joinUrl;
-      document.getElementById('joinUrl').onclick=()=>navigator.clipboard.writeText(joinUrl);
+    peer.on('open',id=>{hostId=id;rD=1000;if(rT){clearTimeout(rT);rT=null;}setStatus('bereit',true);
+      const base=location.href.substring(0,location.href.lastIndexOf('/')+1);const j=base+'player.html?host='+id;
+      document.getElementById('joinUrl').textContent=j;document.getElementById('joinUrl').onclick=()=>navigator.clipboard.writeText(j);
       document.getElementById('displayLink').href=base+'display.html?host='+id;
-      document.getElementById('qrcode').innerHTML='';
-      new QRCode(document.getElementById('qrcode'),{text:joinUrl,width:180,height:180});
-    });
+      document.getElementById('qrcode').innerHTML='';new QRCode(document.getElementById('qrcode'),{text:j,width:180,height:180});});
     peer.on('connection',conn=>{conn.on('open',()=>{conn.on('data',d=>handleMessage(conn,d));conn.on('close',()=>removeConn(conn));});});
     peer.on('disconnected',()=>{setStatus('getrennt – reconnect…',false);scheduleReconnect();});
     peer.on('error',e=>{console.error('Peer:',e);setStatus('Fehler: '+e.type,false);});
   }
-
   function handleMessage(conn,data){
     if(data.type==='displayJoin'){displayConns.set(conn.peer,conn);conn.send(stateMsg());return;}
     if(data.type==='join'){addPlayer(conn,data.name);return;}
     if(data.type==='answer'){handleAnswer(conn,data);return;}
   }
-  function removeConn(conn){
-    if(displayConns.has(conn.peer)){displayConns.delete(conn.peer);return;}
-    const p=players.find(x=>x.id===conn.peer);
-    if(p){players=players.filter(x=>x!==p);playerConns.delete(conn.peer);renderLobby();broadcastState();}
-  }
-  function assignTeam(){const a=players.filter(p=>p.team==='A').length,b=players.filter(p=>p.team==='B').length;if(a<b)return'A';if(b<a)return'B';return Math.random()<.5?'A':'B';}
+  function removeConn(conn){if(displayConns.has(conn.peer)){displayConns.delete(conn.peer);return;}
+    const p=players.find(x=>x.id===conn.peer);if(p){players=players.filter(x=>x!==p);playerConns.delete(conn.peer);renderLobby();broadcastState();}}
+  function assignTeam(){const a=rosterOf('A').length,b=rosterOf('B').length;if(a<b)return'A';if(b<a)return'B';return Math.random()<.5?'A':'B';}
   function addPlayer(conn,name){
     name=(name||'').trim()||('Spieler '+(players.length+1));
     let p=players.find(x=>x.name.toLowerCase()===name.toLowerCase());
-    if(p){playerConns.delete(p.id);p.id=conn.peer;} else {p={id:conn.peer,name,team:assignTeam()};players.push(p);}
-    playerConns.set(conn.peer,conn);
-    conn.send({type:'assigned',team:p.team,teamName:TEAMS[p.team].name,emoji:TEAMS[p.team].emoji,color:TEAMS[p.team].color,gameStarted});
-    if(gameStarted&&round){ // spät beigetreten -> zuschauen
-      conn.send({type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'spectate'});
-    }
+    if(p){playerConns.delete(p.id);p.id=conn.peer;}else{p={id:conn.peer,name,team:assignTeam()};players.push(p);}
+    playerConns.set(conn.peer,conn);sendAssigned(p);
+    if(gameStarted&&round)conn.send({type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'spectate'});
     renderLobby();broadcastState();
   }
+  function sendAssigned(p){const t=TEAMS[p.team];const c=playerConns.get(p.id);if(c)c.send({type:'assigned',team:p.team,teamName:t.name,emoji:t.emoji,color:t.color,gameStarted});}
   function sendTo(pid,msg){const c=playerConns.get(pid);if(c)c.send(msg);}
+  function rosterOf(t){return players.filter(p=>p.team===t);}
 
-  // ===== Rundenlogik =====
-  function rosterOf(team){return players.filter(p=>p.team===team);}
-  function pickActive(team){
-    const roster=rosterOf(team);const n=Math.min(settings.active,roster.length);
+  // ===== Runden =====
+  function pickActive(team){const roster=rosterOf(team);const n=Math.min(settings.active,roster.length);
     const active=new Set(),used=new Set();let ptr=rotation[team];
     for(let i=0;i<n;i++){const p=roster[(ptr+i)%roster.length];active.add(p.id);used.add(p.id);}
     rotation[team]=roster.length?((ptr+n)%roster.length):0;
-    return {active,used,roster,required:Math.max(1,n),correct:0,answered:new Set()};
-  }
-  function startRound(qIndex){
-    if(!gameStarted||!questions.length)return;
+    return {active,used,roster,required:Math.max(1,n),correct:0,answered:new Set()};}
+  function startRound(qIndex){if(!gameStarted||!questions.length)return;
     qIndex=((qIndex%questions.length)+questions.length)%questions.length;
     round={qIndex,question:questions[qIndex],ended:false,teams:{A:pickActive('A'),B:pickActive('B')}};
     players.forEach(p=>{const role=round.teams[p.team].active.has(p.id)?'active':'spectate';
       sendTo(p.id,{type:'question',qIndex,frage:round.question.frage,antworten:round.question.antworten,role});});
-    renderLobby();broadcastState();
-  }
-  function handleAnswer(conn,data){
-    if(!round||round.ended)return;
-    const p=players.find(x=>x.id===conn.peer);if(!p)return;
-    const T=round.teams[p.team];if(!T||!T.active.has(p.id)||T.answered.has(p.id))return;
-    if(data.qIndex!==round.qIndex)return;
-    T.answered.add(p.id);
-    const correct=(data.choice===round.question.richtig);
-    sendTo(p.id,{type:'answerAck',correct});
-    if(correct){
-      T.correct++;
-      if(T.correct>=T.required){endRound(p.team);return;}
-    }else{
-      const sub=T.roster.find(rp=>!T.used.has(rp.id));
-      if(sub){T.active.delete(p.id);T.active.add(sub.id);T.used.add(sub.id);
-        sendTo(sub.id,{type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'active'});}
-      else{T.answered.delete(p.id);sendTo(p.id,{type:'retry'});} // kein Ersatz -> nochmal
-    }
-    renderLobby();broadcastState();
-  }
-  function endRound(winner){
-    round.ended=true;let goalBy=null;
+    renderLobby();broadcastState();}
+  function handleAnswer(conn,data){if(!round||round.ended)return;
+    const p=players.find(x=>x.id===conn.peer);if(!p)return;const T=round.teams[p.team];
+    if(!T||!T.active.has(p.id)||T.answered.has(p.id)||data.qIndex!==round.qIndex)return;
+    T.answered.add(p.id);const correct=(data.choice===round.question.richtig);sendTo(p.id,{type:'answerAck',correct});
+    if(correct){T.correct++;if(T.correct>=T.required){endRound(p.team);return;}}
+    else{const sub=T.roster.find(rp=>!T.used.has(rp.id));
+      if(sub){T.active.delete(p.id);T.active.add(sub.id);T.used.add(sub.id);sendTo(sub.id,{type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'active'});}
+      else{T.answered.delete(p.id);sendTo(p.id,{type:'retry'});}}
+    renderLobby();broadcastState();}
+  function endRound(winner){round.ended=true;let goalBy=null;
     if(winner==='A')ballPos++;else ballPos--;
-    if(ballPos>=2){score.A++;ballPos=0;goalBy='A';}
-    else if(ballPos<=-2){score.B++;ballPos=0;goalBy='B';}
+    if(ballPos>=GOAL){score.A++;ballPos=0;goalBy='A';}else if(ballPos<=-GOAL){score.B++;ballPos=0;goalBy='B';}
     players.forEach(p=>sendTo(p.id,{type:'roundResult',winner,correctIndex:round.question.richtig,frage:round.question.frage,antworten:round.question.antworten}));
-    broadcastState(goalBy);
-    renderLobby();
-    const next=round.qIndex+1;
-    setTimeout(()=>{if(gameStarted)startRound(next);},ROUND_DELAY);
-  }
+    broadcastState(goalBy);renderLobby();const next=round.qIndex+1;setTimeout(()=>{if(gameStarted)startRound(next);},ROUND_DELAY);}
 
   // ===== Steuerung =====
-  function startGame(){
-    if(players.length<2||!questions.length)return;
+  function startGame(){if(players.length<2||!questions.length)return;
     if(rosterOf('A').length<1||rosterOf('B').length<1){alert('Beide Teams brauchen mindestens 1 Spieler.');return;}
     settings.active=parseInt(document.getElementById('activePerQuestion').value);
     gameStarted=true;rotation={A:0,B:0};score={A:0,B:0};ballPos=0;
-    document.getElementById('startBtn').style.display='none';
-    document.getElementById('stopBtn').style.display='inline-block';
-    document.getElementById('scoreboard').style.display='block';
-    document.getElementById('qbox').style.display='block';
-    document.getElementById('activePerQuestion').disabled=true;
-    startRound(0);
-  }
-  function endMatch(){
-    gameStarted=false;round=null;
-    const winner=score.A===score.B?null:(score.A>score.B?'A':'B');
-    playerConns.forEach(c=>c.send({type:'matchEnd',score,winner}));
+    document.getElementById('startBtn').style.display='none';document.getElementById('stopBtn').style.display='inline-block';
+    document.getElementById('scoreboard').style.display='block';document.getElementById('qbox').style.display='block';
+    ['teamSelA','teamSelB','activePerQuestion'].forEach(i=>document.getElementById(i).disabled=true);
+    startRound(0);}
+  function endMatch(){gameStarted=false;round=null;const winner=score.A===score.B?null:(score.A>score.B?'A':'B');
+    playerConns.forEach(c=>c.send({type:'matchEnd',score,winner,teams:pubTeams()}));
     const st=stateMsg();st.phase='end';st.matchWinner=winner;displayConns.forEach(c=>c.send(st));
-    document.getElementById('stopBtn').style.display='none';
-    document.getElementById('newBtn').style.display='inline-block';
-    document.getElementById('phaseInfo').textContent = winner? ('Schlusspfiff! Sieger: '+TEAMS[winner].name) : 'Schlusspfiff! Unentschieden.';
-    document.getElementById('qbox').style.display='none';
-  }
-  function newMatch(){
-    score={A:0,B:0};ballPos=0;round=null;
-    document.getElementById('newBtn').style.display='none';
-    document.getElementById('startBtn').style.display='inline-block';
+    document.getElementById('stopBtn').style.display='none';document.getElementById('newBtn').style.display='inline-block';
+    document.getElementById('phaseInfo').textContent=winner?('Schlusspfiff! Sieger: '+TEAMS[winner].emoji+' '+TEAMS[winner].name):'Schlusspfiff! Unentschieden.';
+    document.getElementById('qbox').style.display='none';}
+  function newMatch(){score={A:0,B:0};ballPos=0;round=null;
+    document.getElementById('newBtn').style.display='none';document.getElementById('startBtn').style.display='inline-block';
     document.getElementById('scoreboard').style.display='none';
-    document.getElementById('activePerQuestion').disabled=false;
-    playerConns.forEach(c=>c.send({type:'backToLobby'}));
-    renderLobby();broadcastState();
-  }
+    ['teamSelA','teamSelB','activePerQuestion'].forEach(i=>document.getElementById(i).disabled=false);
+    playerConns.forEach(c=>c.send({type:'backToLobby'}));renderLobby();broadcastState();}
 
-  // ===== Rendering =====
-  function renderLobby(){
-    const a=rosterOf('A'),b=rosterOf('B');
+  // ===== Rendering Lobby =====
+  function renderLobby(){const a=rosterOf('A'),b=rosterOf('B');
     document.getElementById('playerCount').textContent=players.length;
-    document.getElementById('countA').textContent=a.length;
-    document.getElementById('countB').textContent=b.length;
-    const act=t=>(round&&!round.ended)?round.teams[t].active:new Set();
-    const aA=act('A'),aB=act('B');
+    document.getElementById('countA').textContent=a.length;document.getElementById('countB').textContent=b.length;
+    document.getElementById('thA').innerHTML=TEAMS.A.emoji+' '+esc(TEAMS.A.name)+' <span id="countA">'+a.length+'</span>';
+    document.getElementById('thB').innerHTML=TEAMS.B.emoji+' '+esc(TEAMS.B.name)+' <span id="countB">'+b.length+'</span>';
+    const act=t=>(round&&!round.ended)?round.teams[t].active:new Set();const aA=act('A'),aB=act('B');
     document.getElementById('rosterA').innerHTML=a.map(p=>`<div class="player ${aA.has(p.id)?'active':''}">${esc(p.name)}</div>`).join('')||'<div class="muted">—</div>';
     document.getElementById('rosterB').innerHTML=b.map(p=>`<div class="player ${aB.has(p.id)?'active':''}">${esc(p.name)}</div>`).join('')||'<div class="muted">—</div>';
-    document.getElementById('scoreA').textContent=score.A;
-    document.getElementById('scoreB').textContent=score.B;
+    document.getElementById('scoreboard').innerHTML=TEAMS.A.emoji+' '+score.A+' : '+score.B+' '+TEAMS.B.emoji;
     document.getElementById('startBtn').disabled=gameStarted||players.length<2||questions.length===0;
-    if(gameStarted&&round){
-      const q=round.question;
-      document.getElementById('qbox').innerHTML='<b>Frage '+(round.qIndex+1)+':</b> '+esc(q.frage)+(round.ended?'<br><span class="muted">Runde vorbei – nächste Frage folgt…</span>':'');
-      document.getElementById('phaseInfo').textContent='Ballposition: '+ballPos+'  ·  Spiel läuft…';
-    }
-  }
-  function stateMsg(goalBy){
-    let cq=null;
+    if(gameStarted&&round){const q=round.question;
+      document.getElementById('qbox').innerHTML='<b>Frage '+(round.qIndex+1)+':</b> '+esc(q.frage)+(round.ended?'<br><span class="muted">Runde vorbei – nächste folgt…</span>':'');
+      document.getElementById('phaseInfo').textContent='Ballposition: '+ballPos+' / Tor bei ±'+GOAL+'  ·  Spiel läuft…';}}
+  function pubTeams(){return {A:{name:TEAMS.A.name,emoji:TEAMS.A.emoji,color:TEAMS.A.color,players:rosterOf('A').map(p=>p.name)},
+                              B:{name:TEAMS.B.name,emoji:TEAMS.B.emoji,color:TEAMS.B.color,players:rosterOf('B').map(p=>p.name)}};}
+  function stateMsg(goalBy){let cq=null;
     if(round&&gameStarted)cq={frage:round.question.frage,antworten:round.question.antworten,richtig:round.ended?round.question.richtig:null,qIndex:round.qIndex};
     return {type:'state',phase:!gameStarted?'lobby':(round&&round.ended?'roundresult':'play'),
-      ballPos,score,goalBy:goalBy||null,currentQuestion:cq,matchWinner:null,
-      teams:{A:{name:TEAMS.A.name,emoji:TEAMS.A.emoji,color:TEAMS.A.color,players:rosterOf('A').map(p=>p.name)},
-             B:{name:TEAMS.B.name,emoji:TEAMS.B.emoji,color:TEAMS.B.color,players:rosterOf('B').map(p=>p.name)}},
-      joinUrl:hostId?location.href.substring(0,location.href.lastIndexOf('/')+1)+'player.html?host='+hostId:''};
-  }
+      ballPos,goal:GOAL,score,goalBy:goalBy||null,currentQuestion:cq,matchWinner:null,teams:pubTeams(),
+      joinUrl:hostId?location.href.substring(0,location.href.lastIndexOf('/')+1)+'player.html?host='+hostId:''};}
   function broadcastState(goalBy){const m=stateMsg(goalBy);displayConns.forEach(c=>c.send(m));}
 
-  // ===== Fragen-Import =====
-  function loadQuestions(){
-    const raw=document.getElementById('questionsInput').value.trim();const st=document.getElementById('questionsStatus');
-    if(!raw){questions=[];st.textContent='Noch keine Fragen geladen.';renderLobby();return;}
-    try{
-      let data=JSON.parse(raw.startsWith('[')?raw:('['+raw+']'));
-      data=data.filter(q=>q&&typeof q.frage==='string'&&Array.isArray(q.antworten)&&q.antworten.length>=2&&Number.isInteger(q.richtig)&&q.richtig>=0&&q.richtig<q.antworten.length);
-      if(!data.length)throw new Error('keine gültigen Fragen');
-      questions=data;st.textContent='✅ '+questions.length+' Fragen geladen.';st.style.color='#2ecc71';
-    }catch(e){questions=[];st.textContent='⚠️ JSON ungültig: '+e.message;st.style.color='#e74c3c';}
-    renderLobby();
+  // ===== Team-Auswahl =====
+  function fillTeamSelectors(){
+    const a=document.getElementById('teamSelA'),b=document.getElementById('teamSelB');
+    NATIONS.forEach((x,i)=>{a.add(new Option(x.f+' '+x.n,i));b.add(new Option(x.f+' '+x.n,i));});
+    a.value=0;b.value=1;
+    const upd=()=>{let ia=+a.value,ib=+b.value;if(ia===ib){ib=(ib+1)%NATIONS.length;b.value=ib;}
+      TEAMS={A:{key:'A',...natTeam(ia)},B:{key:'B',...natTeam(ib)}};renderLobby();broadcastState();
+      players.forEach(p=>sendAssigned(p));};
+    a.onchange=upd;b.onchange=upd;
   }
+
+  // ===== FRAGEN-EDITOR (bidirektional) =====
+  const LETTERS=['A','B','C','D'];const LS_KEY='fb_fragen';
+  let editorQuestions=[],editorSyncing=false;
+  const SAMPLE_TERME=[
+    {frage:"Fasse zusammen: 4x + 5x",antworten:["20x","9x","45x","9"],richtig:1},
+    {frage:"Multipliziere aus: 3·(x + 2)",antworten:["3x + 2","x + 6","3x + 6","3x + 5"],richtig:2},
+    {frage:"Klammere aus: 6x + 9",antworten:["6·(x + 3)","3·(2x + 3)","3·(2x + 9)","9·(x + 1)"],richtig:1},
+    {frage:"Was ergibt x · x ?",antworten:["2x","x","x²","2x²"],richtig:2},
+    {frage:"Was ergibt x + x ?",antworten:["x²","2x","2","x"],richtig:1},
+    {frage:"Löse die Minusklammer auf: −(x − 4)",antworten:["−x − 4","x − 4","−x + 4","x + 4"],richtig:2},
+    {frage:"Setze x = 3 ein: 2x + 1",antworten:["6","7","9","5"],richtig:1},
+    {frage:"Multipliziere: 2x · 3x",antworten:["6x","6x²","5x²","6x³"],richtig:1},
+    {frage:"Vereinfache: 8x − 3x + x",antworten:["4x","12x","6x","6"],richtig:2},
+    {frage:"Klammere aus: 10x − 15",antworten:["5·(2x + 3)","10·(x − 15)","5·(2x − 3)","5·(x − 3)"],richtig:2}
+  ];
+  function parseEditorText(raw){let t=raw.trim().replace(/^```[a-z]*\n?/i,'').replace(/```$/,'').trim();
+    try{return JSON.parse(t);}catch(_){}try{return JSON.parse('['+t+']');}catch(e){throw e;}}
+  function validate(qs){if(!Array.isArray(qs)||!qs.length)throw new Error('Mind. 1 Frage');
+    qs.forEach((q,i)=>{if(!q.frage)throw new Error('Frage '+(i+1)+': "frage" fehlt');
+      if(!Array.isArray(q.antworten)||q.antworten.length<2)throw new Error('Frage '+(i+1)+': mind. 2 Antworten');
+      if(typeof q.richtig!=='number'||q.richtig<0||q.richtig>=q.antworten.length)throw new Error('Frage '+(i+1)+': "richtig" ungültig');});}
+  function qsToText(qs){return qs.map(q=>JSON.stringify({frage:q.frage,antworten:q.antworten,richtig:q.richtig})).join(',\n');}
+  function setEditorStatus(ok,msg){const el=document.getElementById('editorStatus');el.textContent=msg;el.style.color=ok?'#7CFC00':'#ff8a7a';}
+  function applyQuestions(){questions=editorQuestions.map(q=>({...q}));renderLobby();}
+  function syncTextFromData(){if(editorSyncing)return;editorSyncing=true;
+    document.getElementById('questionsEditor').value=qsToText(editorQuestions);
+    setEditorStatus(true,'✓ '+editorQuestions.length+' Fragen — gültig');
+    try{localStorage.setItem(LS_KEY,JSON.stringify(editorQuestions));}catch(e){}applyQuestions();editorSyncing=false;}
+  function renderCards(){const cont=document.getElementById('editorPreview');const st=cont.scrollTop;cont.innerHTML='';
+    editorQuestions.forEach((q,qi)=>{const card=document.createElement('div');card.className='qcard';
+      const hdr=document.createElement('div');hdr.className='qhdr';
+      hdr.innerHTML='<span class="qnum">Frage '+(qi+1)+' / '+editorQuestions.length+'</span><span style="flex:1"></span>';
+      const del=document.createElement('button');del.className='del';del.textContent='✕ löschen';
+      del.onclick=()=>{editorQuestions.splice(qi,1);if(!editorQuestions.length)editorQuestions.push({frage:'',antworten:['','','',''],richtig:0});syncTextFromData();renderCards();};
+      hdr.appendChild(del);card.appendChild(hdr);
+      const qi2=document.createElement('input');qi2.className='q';qi2.value=q.frage;qi2.placeholder='Frage eingeben…';
+      qi2.oninput=()=>{editorQuestions[qi].frage=qi2.value;syncTextFromData();};card.appendChild(qi2);
+      q.antworten.forEach((ans,ai)=>{const row=document.createElement('div');row.className='arow';
+        const badge=document.createElement('span');badge.className='badge'+(ai===q.richtig?' correct':'');badge.textContent=LETTERS[ai]||(ai+1);badge.title='Klicken = richtige Antwort';
+        badge.onclick=()=>{editorQuestions[qi].richtig=ai;syncTextFromData();renderCards();};
+        const inp=document.createElement('input');inp.value=ans;inp.placeholder='Antwort '+(LETTERS[ai]||ai+1)+'…';
+        inp.oninput=()=>{editorQuestions[qi].antworten[ai]=inp.value;syncTextFromData();};
+        row.appendChild(badge);row.appendChild(inp);card.appendChild(row);});
+      cont.appendChild(card);});
+    const add=document.createElement('button');add.className='btn btn-ghost';add.textContent='+ Frage hinzufügen';add.style.width='100%';add.style.marginTop='8px';
+    add.onclick=()=>{editorQuestions.push({frage:'',antworten:['','','',''],richtig:0});syncTextFromData();renderCards();cont.lastElementChild.scrollIntoView({behavior:'smooth'});};
+    cont.appendChild(add);cont.scrollTop=st;}
+  function loadEditor(qs){editorQuestions=qs.map(q=>({frage:q.frage||'',antworten:(q.antworten||['','','','']).slice(),richtig:q.richtig||0}));syncTextFromData();renderCards();}
+  function onTextareaInput(){const ta=document.getElementById('questionsEditor');
+    try{const parsed=parseEditorText(ta.value);validate(parsed);editorQuestions=parsed.map(q=>({frage:q.frage,antworten:q.antworten.slice(),richtig:q.richtig}));
+      ta.style.borderColor='#2c8c4c';setEditorStatus(true,'✓ '+editorQuestions.length+' Fragen — gültig');try{localStorage.setItem(LS_KEY,JSON.stringify(editorQuestions));}catch(e){}applyQuestions();renderCards();}
+    catch(e){ta.style.borderColor='#e74c3c';setEditorStatus(false,'⚠️ '+e.message);}}
+
   function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
 
-  document.getElementById('questionsInput').addEventListener('input',loadQuestions);
+  // ===== Init =====
+  document.getElementById('questionsEditor').addEventListener('input',onTextareaInput);
+  document.getElementById('sampleBtn').addEventListener('click',()=>loadEditor(SAMPLE_TERME));
+  document.getElementById('clearBtn').addEventListener('click',()=>loadEditor([{frage:'',antworten:['','','',''],richtig:0}]));
   document.getElementById('startBtn').addEventListener('click',startGame);
   document.getElementById('stopBtn').addEventListener('click',endMatch);
   document.getElementById('newBtn').addEventListener('click',newMatch);
-  window.onload=initPeer;
+  window.onload=()=>{initPeer();fillTeamSelectors();
+    const saved=(()=>{try{const r=localStorage.getItem(LS_KEY);if(!r)return null;const p=JSON.parse(r);validate(p);return p;}catch(e){return null;}})();
+    loadEditor(saved||SAMPLE_TERME);renderLobby();};
 </script>
 </body>
 </html>

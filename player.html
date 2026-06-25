@@ -7,30 +7,31 @@
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
   *{box-sizing:border-box}
-  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b132b;color:#e8eefc;min-height:100vh;display:flex;flex-direction:column}
-  .topbar{padding:10px 14px;background:#1c2541;display:flex;align-items:center;gap:8px;font-size:.85rem}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#eafff0;min-height:100vh;display:flex;flex-direction:column;
+       background:linear-gradient(160deg,#0a4d24 0%,#0c3a1d 70%,#072a14 100%);background-color:#0b3d1e}
+  .topbar{padding:10px 14px;background:rgba(0,0,0,.25);display:flex;align-items:center;gap:8px;font-size:.85rem}
   .dot{width:10px;height:10px;border-radius:50%;background:#e74c3c}
-  .dot.green{background:#2ecc71}
+  .dot.green{background:#7CFC00}
   .spacer{flex:1}
   .myteam{font-weight:800;padding:3px 10px;border-radius:999px;font-size:.8rem}
   .screen{flex:1;display:none;flex-direction:column;justify-content:center;align-items:center;padding:22px;text-align:center;gap:16px}
   .screen.active{display:flex}
-  h1{font-size:1.4rem;margin:0}
-  input{width:100%;max-width:340px;padding:14px;font-size:1.1rem;border-radius:12px;border:1px solid #2a3a66;background:#1c2541;color:#e8eefc;text-align:center}
-  .btn{padding:14px 22px;font-size:1.1rem;font-weight:800;border:none;border-radius:14px;background:#2ecc71;color:#06281a;cursor:pointer}
-  .btn:disabled{background:#3a4a66;color:#7a8aae}
+  h1{font-size:1.5rem;margin:0}
+  input{width:100%;max-width:340px;padding:14px;font-size:1.1rem;border-radius:12px;border:1px solid #2c8c4c;background:rgba(0,0,0,.3);color:#eafff0;text-align:center}
+  .btn{padding:14px 24px;font-size:1.1rem;font-weight:800;border:none;border-radius:14px;background:#ffd633;color:#1a3a10;cursor:pointer}
+  .btn:disabled{background:#3a5a44;color:#8fb89c}
   .team-badge{font-size:1.5rem;font-weight:900;padding:16px 24px;border-radius:18px}
-  .question{font-size:1.3rem;font-weight:700;max-width:520px}
+  .question{font-size:1.35rem;font-weight:700;max-width:520px}
   .options{display:grid;gap:12px;width:100%;max-width:460px}
-  .opt{padding:16px;font-size:1.15rem;font-weight:700;border:2px solid #2a3a66;border-radius:14px;background:#1c2541;color:#e8eefc;cursor:pointer;text-align:left}
+  .opt{padding:16px;font-size:1.15rem;font-weight:700;border:2px solid #2c8c4c;border-radius:14px;background:rgba(0,0,0,.25);color:#eafff0;cursor:pointer;text-align:left}
   .opt:disabled{opacity:.6}
-  .opt.correct{background:#1e7a3a;border-color:#2ecc71}
+  .opt.correct{background:#1e7a3a;border-color:#7CFC00}
   .opt.wrong{background:#7a1e1e;border-color:#e74c3c}
-  .opt.chosen{outline:3px solid #f1c40f}
-  .spectate .opt{cursor:default;opacity:.75}
+  .opt.chosen{outline:3px solid #ffd633}
+  .spectate .opt{cursor:default;opacity:.78}
   .banner{font-size:1.2rem;font-weight:800}
   .reconnect{position:fixed;top:0;left:0;right:0;background:#e67e22;color:#fff;text-align:center;padding:6px;font-size:.85rem;display:none}
-  .muted{color:#9fb0d6}
+  .muted{color:#9ecbaa}
   .big{font-size:2rem;font-weight:900}
 </style>
 </head>
@@ -40,7 +41,7 @@
 
 <div class="screen active" id="loginScreen">
   <h1>⚽ Quiz-Fussball</h1>
-  <p class="muted">Name eingeben und beitreten.</p>
+  <p class="muted">Name eingeben und ins Team!</p>
   <input id="nameInput" placeholder="Dein Name" maxlength="20" autocomplete="off">
   <button class="btn" id="joinBtn">Beitreten</button>
 </div>
@@ -48,7 +49,7 @@
 <div class="screen" id="waitScreen">
   <p class="muted">Du spielst für</p>
   <div class="team-badge" id="teamBadge">…</div>
-  <p class="muted" id="waitText">Warte, bis der Host startet…</p>
+  <p class="muted" id="waitText">Warte, bis der Anpfiff kommt…</p>
 </div>
 
 <div class="screen" id="playScreen">
@@ -69,10 +70,8 @@
   const METERED_CONFIG= { username:'c4ca643ec3ef89475fda8aaf', credential:'958T4scRQJRKgSyg' };
   function buildIce(){const u=METERED_CONFIG.username,c=METERED_CONFIG.credential;return [{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.relay.metered.ca:80'},{urls:'turn:global.relay.metered.ca:80',username:u,credential:c},{urls:'turn:global.relay.metered.ca:80?transport=tcp',username:u,credential:c},{urls:'turn:global.relay.metered.ca:443',username:u,credential:c},{urls:'turns:global.relay.metered.ca:443?transport=tcp',username:u,credential:c}];}
 
-  const params=new URLSearchParams(location.search);
-  const hostId=params.get('host');
-  let peer=null,conn=null,playerName='',myTeam=null;
-  let curQ=null,qShownAt=0,myRole='spectate',answered=false;
+  const params=new URLSearchParams(location.search);const hostId=params.get('host');
+  let peer=null,conn=null,playerName='',myTeam=null,curQ=null,qShownAt=0,myRole='spectate',answered=false;
 
   function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
   function setStatus(t,ok){document.getElementById('statusText').textContent=t;document.getElementById('dot').className='dot'+(ok?' green':'');}
@@ -83,92 +82,64 @@
   document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')join();});
   const saved=localStorage.getItem('fbName');if(saved)document.getElementById('nameInput').value=saved;
 
-  function join(){
-    playerName=document.getElementById('nameInput').value.trim();
+  function join(){playerName=document.getElementById('nameInput').value.trim();
     if(!playerName){document.getElementById('nameInput').focus();return;}
     if(!hostId){alert('Kein Host-Link. QR erneut scannen.');return;}
-    localStorage.setItem('fbName',playerName);
-    document.getElementById('joinBtn').disabled=true;connect();
-  }
+    localStorage.setItem('fbName',playerName);document.getElementById('joinBtn').disabled=true;connect();}
 
-  let rDelay=1000,rTimer=null;
-  function scheduleReconnect(){if(rTimer||!peer||peer.destroyed)return;rTimer=setTimeout(()=>{rTimer=null;if(peer&&!peer.destroyed&&peer.disconnected){try{peer.reconnect();}catch(e){}}rDelay=Math.min(rDelay*2,30000);},rDelay);}
-
+  let rD=1000,rT=null;
+  function scheduleReconnect(){if(rT||!peer||peer.destroyed)return;rT=setTimeout(()=>{rT=null;if(peer&&!peer.destroyed&&peer.disconnected){try{peer.reconnect();}catch(e){}}rD=Math.min(rD*2,30000);},rD);}
   function connect(){
     peer=new Peer({...PEER_CONFIG, config:{iceServers:buildIce()}});
-    peer.on('open',()=>{
-      rDelay=1000;if(rTimer){clearTimeout(rTimer);rTimer=null;}
-      setStatus('verbinde mit Host…',false);
+    peer.on('open',()=>{rD=1000;if(rT){clearTimeout(rT);rT=null;}setStatus('verbinde mit Host…',false);
       conn=peer.connect(hostId,{reliable:true});
       conn.on('open',()=>{setStatus('verbunden',true);document.getElementById('reconnectBanner').style.display='none';conn.send({type:'join',name:playerName});});
       conn.on('data',handleHost);
       conn.on('close',()=>{setStatus('Verbindung verloren',false);document.getElementById('reconnectBanner').style.display='block';retryConn();});
-      conn.on('error',e=>console.error('Conn:',e));
-    });
+      conn.on('error',e=>console.error('Conn:',e));});
     peer.on('disconnected',()=>{setStatus('getrennt – reconnect…',false);scheduleReconnect();});
-    peer.on('error',e=>{console.error('Peer:',e);if(e.type==='peer-unavailable'){setStatus('Host nicht gefunden',false);document.getElementById('joinBtn').disabled=false;}});
-  }
+    peer.on('error',e=>{console.error('Peer:',e);if(e.type==='peer-unavailable'){setStatus('Host nicht gefunden',false);document.getElementById('joinBtn').disabled=false;}});}
   function retryConn(){setTimeout(()=>{if(!conn||!conn.open){try{conn=peer.connect(hostId,{reliable:true});conn.on('open',()=>{conn.send({type:'join',name:playerName});setStatus('verbunden',true);document.getElementById('reconnectBanner').style.display='none';});conn.on('data',handleHost);conn.on('close',()=>{document.getElementById('reconnectBanner').style.display='block';retryConn();});}catch(e){}}},3000);}
 
-  function handleHost(data){
-    switch(data.type){
-      case 'assigned':
-        myTeam=data;badge(document.getElementById('teamBadge'));
-        const tag=document.getElementById('myTeamTag');tag.style.display='inline-block';tag.textContent=data.emoji+' '+data.teamName;tag.style.background=data.color;tag.style.color='#fff';
-        if(!data.gameStarted)show('waitScreen');
-        break;
-      case 'question': renderQuestion(data);break;
-      case 'answerAck': ackAnswer(data.correct);break;
-      case 'retry': enableOptions();document.getElementById('feedback').textContent='Nochmal versuchen!';break;
-      case 'roundResult': renderRoundResult(data);break;
-      case 'matchEnd': renderEnd(data);break;
-      case 'backToLobby': show('waitScreen');break;
-    }
-  }
+  function handleHost(data){switch(data.type){
+    case 'assigned':myTeam=data;badge(document.getElementById('teamBadge'));
+      const tag=document.getElementById('myTeamTag');tag.style.display='inline-block';tag.textContent=data.emoji+' '+data.teamName;tag.style.background=data.color;tag.style.color='#fff';
+      if(!data.gameStarted)show('waitScreen');break;
+    case 'question':renderQuestion(data);break;
+    case 'answerAck':ackAnswer(data.correct);break;
+    case 'retry':enableOptions();document.getElementById('feedback').textContent='Nochmal versuchen!';break;
+    case 'roundResult':renderRoundResult(data);break;
+    case 'matchEnd':renderEnd(data);break;
+    case 'backToLobby':show('waitScreen');break;}}
 
-  function renderQuestion(d){
-    curQ=d;myRole=d.role;answered=false;qShownAt=performance.now();
-    show('playScreen');
+  function renderQuestion(d){curQ=d;myRole=d.role;answered=false;qShownAt=performance.now();show('playScreen');
     const ps=document.getElementById('playScreen');ps.classList.toggle('spectate',d.role!=='active');
-    document.getElementById('roleBanner').textContent = d.role==='active' ? '🎯 Du bist dran – antworte schnell!' : '👀 Dein Team beantwortet – lies mit!';
-    document.getElementById('roleBanner').style.color = d.role==='active' ? '#f1c40f' : '#9fb0d6';
+    document.getElementById('roleBanner').textContent=d.role==='active'?'🎯 Du bist dran – antworte schnell!':'👀 Dein Team beantwortet – lies mit!';
+    document.getElementById('roleBanner').style.color=d.role==='active'?'#ffd633':'#9ecbaa';
     document.getElementById('questionText').textContent='Frage '+(d.qIndex+1)+': '+d.frage;
     const wrap=document.getElementById('options');wrap.innerHTML='';
-    d.antworten.forEach((a,i)=>{
-      const b=document.createElement('button');b.className='opt';b.textContent=a;
-      if(d.role==='active'){b.onclick=()=>choose(i,b);}else{b.disabled=true;}
-      wrap.appendChild(b);
-    });
-    document.getElementById('feedback').textContent='';
-  }
-  function choose(i,btn){
-    if(answered||myRole!=='active')return;answered=true;
-    document.querySelectorAll('#options .opt').forEach(o=>{o.disabled=true;o.classList.remove('chosen');});
-    btn.classList.add('chosen');
+    d.antworten.forEach((a,i)=>{const b=document.createElement('button');b.className='opt';b.textContent=a;
+      if(d.role==='active'){b.onclick=()=>choose(i,b);}else{b.disabled=true;}wrap.appendChild(b);});
+    document.getElementById('feedback').textContent='';}
+  function choose(i,btn){if(answered||myRole!=='active')return;answered=true;
+    document.querySelectorAll('#options .opt').forEach(o=>{o.disabled=true;o.classList.remove('chosen');});btn.classList.add('chosen');
     conn.send({type:'answer',qIndex:curQ.qIndex,choice:i,reactionMs:Math.round(performance.now()-qShownAt)});
-    document.getElementById('feedback').textContent='Antwort gesendet…';
-  }
+    document.getElementById('feedback').textContent='Antwort gesendet…';}
   function enableOptions(){answered=false;document.querySelectorAll('#options .opt').forEach(o=>{o.disabled=false;o.classList.remove('chosen','wrong','correct');});}
-  function ackAnswer(correct){
-    document.getElementById('feedback').textContent = correct ? '✅ Richtig!' : '❌ Falsch – Ersatz übernimmt (falls vorhanden).';
-    const chosen=document.querySelector('#options .opt.chosen');if(chosen)chosen.classList.add(correct?'correct':'wrong');
-  }
-  function renderRoundResult(d){
-    show('playScreen');document.getElementById('playScreen').classList.add('spectate');
-    const opts=document.querySelectorAll('#options .opt');
-    opts.forEach((o,i)=>{o.disabled=true;o.classList.toggle('correct',i===d.correctIndex);});
-    const won = d.winner===myTeam.team;
-    document.getElementById('roleBanner').textContent = d.winner ? (won?'⚽ Dein Team gewinnt die Frage!':'Gegner war schneller…') : 'Niemand – Ball bleibt.';
-    document.getElementById('roleBanner').style.color = won?'#2ecc71':'#9fb0d6';
-    document.getElementById('feedback').textContent='Richtige Antwort: '+(d.antworten?d.antworten[d.correctIndex]:'');
-  }
-  function renderEnd(d){
-    show('endScreen');
-    document.getElementById('endScore').textContent='🔵 '+d.score.A+' : '+d.score.B+' 🔴';
+  function ackAnswer(correct){document.getElementById('feedback').textContent=correct?'✅ Richtig!':'❌ Falsch – Ersatz übernimmt (falls vorhanden).';
+    const ch=document.querySelector('#options .opt.chosen');if(ch)ch.classList.add(correct?'correct':'wrong');}
+  function renderRoundResult(d){show('playScreen');document.getElementById('playScreen').classList.add('spectate');
+    document.querySelectorAll('#options .opt').forEach((o,i)=>{o.disabled=true;o.classList.toggle('correct',i===d.correctIndex);});
     const won=d.winner===myTeam.team;
-    document.getElementById('endTitle').textContent = d.winner ? (won?'🏆 Ihr habt gewonnen!':'Diesmal verloren') : '🤝 Unentschieden!';
-    document.getElementById('endText').textContent = d.winner? ('Sieger: '+(d.winner==='A'?'Team Blau':'Team Rot')) : '';
-  }
+    document.getElementById('roleBanner').textContent=d.winner?(won?'⚽ Dein Team gewinnt die Frage!':'Gegner war schneller…'):'Niemand – Ball bleibt.';
+    document.getElementById('roleBanner').style.color=won?'#7CFC00':'#9ecbaa';
+    document.getElementById('feedback').textContent='Richtige Antwort: '+(d.antworten?d.antworten[d.correctIndex]:'');}
+  function renderEnd(d){show('endScreen');
+    const eA=d.teams?d.teams.A.emoji:'🔵',eB=d.teams?d.teams.B.emoji:'🔴';
+    document.getElementById('endScore').textContent=eA+' '+d.score.A+' : '+d.score.B+' '+eB;
+    const won=d.winner===myTeam.team;
+    document.getElementById('endTitle').textContent=d.winner?(won?'🏆 Ihr habt gewonnen!':'Diesmal verloren'):'🤝 Unentschieden!';
+    document.getElementById('endText').textContent=d.winner?('Sieger: '+(d.teams?(d.teams[d.winner].emoji+' '+d.teams[d.winner].name):d.winner)):'';}
 </script>
 </body>
 </html>
