@@ -150,14 +150,13 @@
     const ch=document.querySelector('#options .opt.chosen');if(ch)ch.classList.add(correct?'correct':'wrong');}
   function renderStrateg(d){myRole='strateg';answered=false;show('playScreen');
     document.getElementById('playScreen').classList.add('spectate');
-    const rb=document.getElementById('roleBanner');rb.className='banner strateg';rb.style.color='';rb.style.background='';rb.textContent='🧠 STRATEGE – sag die Farbe an, klicke NICHT!';
+    const rb=document.getElementById('roleBanner');rb.className='banner strateg';rb.style.color='';rb.style.background='';rb.textContent='🧠 STRATEGE – finde die Antwort, sag die FARBE an (klicke NICHT)!';
     document.getElementById('questionText').textContent='Frage '+(d.qIndex+1)+': '+d.frage;
     const wrap=document.getElementById('options');wrap.innerHTML='';
-    d.antworten.forEach((a,i)=>{const correct=i===d.correctIndex;const row=document.createElement('div');
-      row.className='opt strateg-row'+(correct?' correct':'');
-      row.innerHTML='<span class="chip" style="background:'+a.color.hex+'">'+esc(a.color.name)+'</span><span class="atxt">'+esc(a.text)+'</span>'+(correct?'<span class="rico">✓ RICHTIG</span>':'');
+    d.antworten.forEach((a,i)=>{const row=document.createElement('div');row.className='opt strateg-row';
+      row.innerHTML='<span class="chip" style="background:'+a.color.hex+'">'+esc(a.color.name)+'</span><span class="atxt">'+esc(a.text)+'</span>';
       wrap.appendChild(row);});
-    document.getElementById('feedback').textContent='Sag deinem Klicker die FARBE der richtigen Antwort!';}
+    document.getElementById('feedback').textContent='Überlege, welche Antwort stimmt – und sag deinem Klicker ihre Farbe!';}
   function renderKlicker(d){myRole='klicker';answered=false;curQ=d;show('playScreen');
     document.getElementById('playScreen').classList.remove('spectate');
     const rb=document.getElementById('roleBanner');rb.className='banner klicker';rb.style.color='';rb.style.background='';rb.textContent='👆 KLICKER – drücke die angesagte Farbe!';

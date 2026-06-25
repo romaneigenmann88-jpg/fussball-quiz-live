@@ -86,6 +86,8 @@
       <select id="modeSel"><option value="comm" selected>🗣️ Kommunikation (Farben)</option><option value="standard">Standard (alle Aktiven antworten)</option></select>
       <label style="margin-top:12px">Aktive pro Frage (nur Standard-Modus)</label>
       <select id="activePerQuestion"><option value="2" selected>2</option><option value="1">1</option></select>
+      <label style="margin-top:12px">Strafzeit bei falschem Klick (nur Kommunikation)</label>
+      <select id="penaltySel"><option value="2">2 Sek</option><option value="3" selected>3 Sek</option><option value="5">5 Sek</option><option value="8">8 Sek</option><option value="10">10 Sek</option><option value="15">15 Sek</option></select>
     </div>
   </div>
 
@@ -160,7 +162,7 @@
   let questions=[];
   let gameStarted=false;
   let ballPos=0, score={A:0,B:0};         // ballPos -3..3, Tor bei ±3 (2 Zwischenpositionen)
-  let settings={active:2,mode:'comm'};
+  let settings={active:2,mode:'comm',penalty:3000};
   let rotation={A:0,B:0};let round=null;const ROUND_DELAY=3800;
   const GOAL=3;
 
@@ -218,7 +220,7 @@
     const palIdx=shuffle([...pal.keys()]).slice(0,Math.min(n,pal.length));
     round.teams[team].colorByAnswer=q.antworten.map((_,i)=>pal[palIdx[i%palIdx.length]]);});}
   function sendCommViews(){const q=round.question;players.forEach(p=>{const T=round.teams[p.team];
-    if(p.id===T.strateg)sendTo(p.id,{type:'strateg',qIndex:round.qIndex,frage:q.frage,antworten:q.antworten.map((t,i)=>({text:t,color:T.colorByAnswer[i]})),correctIndex:q.richtig});
+    if(p.id===T.strateg)sendTo(p.id,{type:'strateg',qIndex:round.qIndex,frage:q.frage,antworten:q.antworten.map((t,i)=>({text:t,color:T.colorByAnswer[i]}))});
     else if(p.id===T.klicker)sendTo(p.id,{type:'klicker',qIndex:round.qIndex,colors:shuffle(q.antworten.map((t,i)=>({name:T.colorByAnswer[i].name,hex:T.colorByAnswer[i].hex,answerIndex:i})))});
     else sendTo(p.id,{type:'spectate',activeNames:commActiveNames(p.team)});});}
   function sendSpectate(pid,team){sendTo(pid,{type:'spectate',activeNames:activeNames(team)});}
@@ -234,7 +236,7 @@
     if(!T||data.qIndex!==round.qIndex)return;
     if(round.mode==='comm'){
       if(p.id!==T.klicker||Date.now()<(T.lockedUntil||0))return;
-      if(data.choice===round.question.richtig){endRound(p.team);}else{T.lockedUntil=Date.now()+2000;sendTo(p.id,{type:'lock',ms:2000});}
+      if(data.choice===round.question.richtig){endRound(p.team);}else{T.lockedUntil=Date.now()+settings.penalty;sendTo(p.id,{type:'lock',ms:settings.penalty});}
       return;}
     if(!T.active||!T.active.has(p.id)||T.answered.has(p.id))return;
     T.answered.add(p.id);const correct=(data.choice===round.question.richtig);sendTo(p.id,{type:'answerAck',correct});
@@ -254,11 +256,12 @@
     if(rosterOf('A').length<1||rosterOf('B').length<1){alert('Beide Teams brauchen mindestens 1 Spieler.');return;}
     settings.active=parseInt(document.getElementById('activePerQuestion').value);
     settings.mode=document.getElementById('modeSel').value;
+    settings.penalty=parseInt(document.getElementById('penaltySel').value)*1000;
     if(settings.mode==='comm'&&(rosterOf('A').length<2||rosterOf('B').length<2)){alert('Kommunikations-Modus: beide Teams brauchen mind. 2 Spieler (Stratege + Klicker).');return;}
     gameStarted=true;rotation={A:0,B:0};score={A:0,B:0};ballPos=0;
     document.getElementById('startBtn').style.display='none';document.getElementById('stopBtn').style.display='inline-block';
     document.getElementById('scoreboard').style.display='block';document.getElementById('qbox').style.display='block';
-    ['teamSelA','teamSelB','activePerQuestion','modeSel'].forEach(i=>document.getElementById(i).disabled=true);
+    ['teamSelA','teamSelB','activePerQuestion','modeSel','penaltySel'].forEach(i=>document.getElementById(i).disabled=true);
     startRound(0);}
   function endMatch(){gameStarted=false;round=null;const winner=score.A===score.B?null:(score.A>score.B?'A':'B');
     playerConns.forEach(c=>c.send({type:'matchEnd',score,winner,teams:pubTeams()}));
@@ -269,7 +272,7 @@
   function newMatch(){score={A:0,B:0};ballPos=0;round=null;
     document.getElementById('newBtn').style.display='none';document.getElementById('startBtn').style.display='inline-block';
     document.getElementById('scoreboard').style.display='none';
-    ['teamSelA','teamSelB','activePerQuestion','modeSel'].forEach(i=>document.getElementById(i).disabled=false);
+    ['teamSelA','teamSelB','activePerQuestion','modeSel','penaltySel'].forEach(i=>document.getElementById(i).disabled=false);
     playerConns.forEach(c=>c.send({type:'backToLobby'}));renderLobby();broadcastState();}
 
   // ===== Rendering Lobby =====
