@@ -170,7 +170,7 @@
   let gameStarted=false;
   let ballPos=0, score={A:0,B:0};         // ballPos -3..3, Tor bei ±3 (2 Zwischenpositionen)
   let settings={active:2,mode:'comm',penalty:3000};
-  let rotation={A:0,B:0};let round=null;const ROUND_DELAY=3800;let qOrder=[];
+  let pickQueue={A:[],B:[]};let round=null;const ROUND_DELAY=3800;let qOrder=[];
   const GOAL=3;
 
   // ===== Peer + Backoff =====
@@ -218,18 +218,17 @@
   function rosterOf(t){return players.filter(p=>p.team===t);}
 
   // ===== Runden =====
+  function nextActive(team,n){let q=pickQueue[team].filter(id=>rosterOf(team).some(p=>p.id===id));
+    if(q.length<n){const used=new Set(q);const rest=shuffle(rosterOf(team).map(p=>p.id).filter(id=>!used.has(id)));q=q.concat(rest);}
+    const ids=q.slice(0,n);pickQueue[team]=q.slice(n);return ids;}
   function pickActive(team){const roster=rosterOf(team);const n=Math.min(settings.active,roster.length);
-    const active=new Set(),used=new Set();let ptr=rotation[team];
-    for(let i=0;i<n;i++){const p=roster[(ptr+i)%roster.length];active.add(p.id);used.add(p.id);}
-    rotation[team]=roster.length?((ptr+n)%roster.length):0;
-    return {active,used,roster,required:Math.max(1,n),correct:0,answered:new Set()};}
+    const ids=nextActive(team,n);const active=new Set(ids),used=new Set(ids);
+    return {active,used,roster,required:Math.max(1,ids.length),correct:0,answered:new Set()};}
   const nameOf=id=>{const p=players.find(x=>x.id===id);return p?p.name:'?';};
   function activeNames(team){return [...round.teams[team].active].map(nameOf);}
   function commActiveNames(team){const T=round.teams[team];return [...T.strategs.map(id=>nameOf(id)+' 🧠'),nameOf(T.klicker)+' 👆'];}
   function roundActiveNames(team){return round.mode==='comm'?commActiveNames(team):activeNames(team);}
-  function pickComm(team){const roster=rosterOf(team);let ptr=rotation[team];const ids=[];
-    for(let i=0;i<Math.min(2,roster.length);i++)ids.push(roster[(ptr+i)%roster.length].id);
-    rotation[team]=roster.length?((ptr+ids.length)%roster.length):0;
+  function pickComm(team){const roster=rosterOf(team);const ids=nextActive(team,Math.min(2,roster.length));
     let strateg=ids[0],klicker=ids[1]||ids[0];if(ids.length>=2&&Math.random()<.5){strateg=ids[1];klicker=ids[0];}
     return {strategs:[strateg],klicker,used:new Set([strateg,klicker]),roster,lockedUntil:0};}
   function assignColors(q){['A','B'].forEach(team=>{const pal=TEAM_PALETTES[team];const n=q.antworten.length;
@@ -248,7 +247,7 @@
   function sendRoundViews(){players.forEach(p=>{if(round.teams[p.team].active.has(p.id))sendTo(p.id,{type:'question',qIndex:round.qIndex,frage:round.question.frage,antworten:round.question.antworten,role:'active'});else sendSpectate(p.id,p.team);});}
   function updateSpectators(team){rosterOf(team).forEach(p=>{if(!round.teams[team].active.has(p.id))sendSpectate(p.id,team);});}
   function startRound(pos){if(!gameStarted||!questions.length)return;
-    if(!qOrder.length||pos>=qOrder.length){qOrder=shuffle([...questions.keys()]);pos=0;}
+    if(!qOrder.length||pos>=qOrder.length){qOrder=[...questions.keys()];pos=0;}
     const qi=qOrder[pos],q=questions[qi];
     if(settings.mode==='comm'){round={qIndex:pos,question:q,ended:false,mode:'comm',teams:{A:pickComm('A'),B:pickComm('B')}};assignColors(q);sendCommViews();}
     else{round={qIndex:pos,question:q,ended:false,mode:'standard',teams:{A:pickActive('A'),B:pickActive('B')}};sendRoundViews();}
@@ -283,7 +282,7 @@
     settings.mode=document.getElementById('modeSel').value;
     settings.penalty=parseInt(document.getElementById('penaltySel').value)*1000;
     if(settings.mode==='comm'&&(rosterOf('A').length<2||rosterOf('B').length<2)){alert('Kommunikations-Modus: beide Teams brauchen mind. 2 Spieler (Stratege + Klicker).');return;}
-    gameStarted=true;rotation={A:0,B:0};score={A:0,B:0};ballPos=0;qOrder=shuffle([...questions.keys()]);
+    gameStarted=true;pickQueue={A:[],B:[]};score={A:0,B:0};ballPos=0;qOrder=[...questions.keys()];
     document.getElementById('startBtn').style.display='none';document.getElementById('stopBtn').style.display='inline-block';
     document.getElementById('scoreboard').style.display='block';document.getElementById('qbox').style.display='block';
     ['teamSelA','teamSelB','activePerQuestion','modeSel','penaltySel'].forEach(i=>document.getElementById(i).disabled=true);
@@ -294,7 +293,7 @@
     document.getElementById('stopBtn').style.display='none';document.getElementById('newBtn').style.display='inline-block';
     document.getElementById('phaseInfo').textContent=winner?('Schlusspfiff! Sieger: '+TEAMS[winner].emoji+' '+TEAMS[winner].name):'Schlusspfiff! Unentschieden.';
     document.getElementById('qbox').style.display='none';}
-  function newMatch(){score={A:0,B:0};ballPos=0;round=null;
+  function newMatch(){score={A:0,B:0};ballPos=0;round=null;pickQueue={A:[],B:[]};
     document.getElementById('newBtn').style.display='none';document.getElementById('startBtn').style.display='inline-block';
     document.getElementById('scoreboard').style.display='none';
     ['teamSelA','teamSelB','activePerQuestion','modeSel','penaltySel'].forEach(i=>document.getElementById(i).disabled=false);
