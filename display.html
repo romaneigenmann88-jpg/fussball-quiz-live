@@ -55,6 +55,7 @@
     <div class="goalflash" id="goalflash"></div>
     <div class="overlay" id="joinOverlay"><h2 style="font-size:2rem;margin:0">⚽ Mitspielen!</h2><div id="qr"></div><div class="url" id="url">…</div><div id="lobbyCount" style="font-size:1.1rem;color:#bfe9cd"></div></div>
     <div class="overlay" id="endOverlay" style="display:none"><div style="font-size:3rem;font-weight:900" id="endTitle"></div><div style="font-size:2.4rem" id="endScore"></div></div>
+    <div class="overlay" id="pauseOverlay" style="display:none"><div style="font-size:3.5rem;font-weight:900">⏸ Pause / Halbzeit</div></div>
   </div>
 </div>
 
@@ -105,6 +106,7 @@
     if(!s.goalBy)lastGoalShown=null;
 
     document.getElementById('joinOverlay').style.display=(s.phase==='lobby')?'flex':'none';
+    document.getElementById('pauseOverlay').style.display=s.paused?'flex':'none';
     document.getElementById('endOverlay').style.display=(s.phase==='end')?'flex':'none';
     if(s.phase==='lobby'){document.getElementById('lobbyCount').textContent=(s.teams.A.players.length+s.teams.B.players.length)+' Spieler bereit';
       if(!qrDrawn&&s.joinUrl){document.getElementById('url').textContent=s.joinUrl;new QRCode(document.getElementById('qr'),{text:s.joinUrl,width:220,height:220});qrDrawn=true;}}

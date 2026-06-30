@@ -126,7 +126,8 @@
     case 'roundResult':renderRoundResult(data);break;
     case 'matchEnd':renderEnd(data);break;
     case 'backToLobby':show('waitScreen');break;
-    case 'kicked':document.getElementById('teamBadge').textContent='—';document.getElementById('waitText').textContent='Du wurdest vom Host entfernt. Zum Wiedereinsteigen: Seite neu laden.';show('waitScreen');break;}}
+    case 'kicked':document.getElementById('teamBadge').textContent='—';document.getElementById('waitText').textContent='Du wurdest vom Host entfernt. Zum Wiedereinsteigen: Seite neu laden.';show('waitScreen');break;
+    case 'paused':document.getElementById('waitText').textContent='⏸ Pause / Halbzeit – warte auf den Anpfiff zur 2. Halbzeit…';show('waitScreen');break;}}
 
   function renderQuestion(d){curQ=d;myRole='active';answered=false;qShownAt=performance.now();show('playScreen');
     document.getElementById('playScreen').classList.remove('spectate');
